@@ -1,0 +1,35 @@
+\renewcommand{\and}{\\}
+\usepackage{amsmath,bm}
+\usepackage{mathrsfs}
+\usepackage{amssymb}
+\newtheorem{theorem}{Teorema}[section]
+\newtheorem{definition}{Definición}[section]
+\newtheorem{proposition}{Proposición}[section]
+\newtheorem{example}{Ejemplo}[section]
+\usepackage{soul}
+\usepackage{blindtext}
+\usepackage{multicol}
+\setlength{\columnsep}{0.3cm}
+
+\def\begincolumnas{\begin{columns}}
+\def\begincolumna{\begin{column}}
+\def\endcolumna{\end{column}}
+\def\endcolumnas{\end{columns}}
+
+\newenvironment{cols}[1][]{}{}
+
+\newenvironment{col}[1]{\begin{minipage}[t]{#1}\ignorespaces}{%
+\end{minipage}
+\ifhmode\unskip\fi
+\aftergroup\useignorespacesandallpars}
+
+\def\useignorespacesandallpars#1\ignorespaces\fi{%
+#1\fi\ignorespacesandallpars}
+
+\makeatletter
+\def\ignorespacesandallpars{%
+  \@ifnextchar\par
+    {\expandafter\ignorespacesandallpars\@gobble}%
+    {}%
+}
+\makeatother

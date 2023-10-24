@@ -1,0 +1,1107 @@
+---
+title: |
+  \
+  \
+  ![](logo_ine.png){width=1.3in}\
+  \
+  \   
+  **Anexo 1: Guía con lineamientos y orientaciones metodológicas para la imputación de datos estadísticos**\
+  **Instituto Nacional de Estadísticas**
+author:  |
+  |
+  |
+  |
+  | Departamento de Metodologías e Innovación Estadística
+  | Subdepartamento de Investigación Estadística
+  | Instituto Nacional de Estadística
+  |
+  |
+  |
+  |
+  |
+  |
+  | 
+  |
+  |
+  |
+  | 
+  |
+  |
+  | 
+  |
+  |
+  |
+  |
+output:
+  bookdown::pdf_document2: default
+  pdf_document:
+    toc: no
+    toc_depth: 4
+    number_sections: true
+bibliography: biblio.bib
+cls: apa.cls
+link-citations: true
+nocite: '@*'
+colorlinks: no
+header-includes:
+   - \usepackage{eso-pic,graphicx,transparent}
+   - \renewcommand{\contentsname}{Índice}
+   - \renewcommand{\figurename}{Figura}
+   - \renewcommand{\tablename}{Tabla}
+   - \usepackage{eso-pic,graphicx,transparent}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Anexo: Definiciones y aplicaciones en R
+
+## Deiniciones
+
+En el lenguaje de programación R, utilizamos herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
+
+```{r}
+library(tidyverse)
+library(naniar)
+```
+
+
+La estadística Gertrude Mary Cox (@monroe1980memoriam) dijo una vez: "Lo mejor que se puede hacer con los datos faltantes es no tener ninguno". Si bien esto es cierto, no es el mundo en el que vivimos. Trabajar con datos del mundo real significa trabajar con datos faltantes. Para ser un gran analista, necesitamos saber cómo lidiar con los valores faltantes. Comprender cómo funcionan los datos faltantes es importante, ya que pueden tener efectos inesperados en tu análisis. Por ejemplo, ajustar un modelo lineal en datos con valores faltantes elimina fragmentos de datos. Esto significa que tus decisiones no se basan en la evidencia correcta. Reemplazar los valores faltantes, lo que se llama imputación, debe hacerse con mucho cuidado, ya que insertar solo la media puede llevar a estimaciones y decisiones deficientes.
+
+En este apartado aprenderemos sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes. Por lo tanto, asumiremos que tenemoss experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. 
+
+**¿Qué son los valores faltantes?**
+
+Antes de comenzar, debemos definir los valores faltantes. Los valores faltantes son valores que deberían haberse registrado, pero no lo fueron. Pensemos en esto de esta manera: puedes no haber registrado accidentalmente que viste un pájaro, esto es un valor faltante. Esto es diferente a registrar que no se observaron pájaros. `R` almacena los valores faltantes como `NA`, que significa no disponible.
+
+**¿Cómo puedo verificar si tengo valores faltantes?**
+
+Los valores faltantes no saltan y gritan "¡Estoy aquí!". Por lo general, están ocultos, como una aguja en un pajar. Para detectar valores faltantes, usaresmo `any_na`, que devuelve `TRUE` si hay valores faltantes y `FALSE` si no los hay. `are_na` pregunta "¿son estos `NA`?" y devuelve `TRUE/FALSE` para cada valor. are_na nos muestra 3 valores `TRUE`, que corresponden a 3 valores faltantes. Para evitar contar cada `TRUE` manualmente, `n_miss` cuenta el número de valores faltantes. Y `prop_miss` proporciona la proporción de valores faltantes, lo que proporciona un contexto importante: Por ejemplo, el 50% de los datos está faltando.
+
+¿Qué sucede cuando mezclamos valores faltantes con nuestros cálculos? Necesitamos saber qué sucede para poder estar preparados para encontrar estos casos. La regla general es: Los cálculos con `NA` devuelven `NA`. Digamos que tienes la altura de tres amigos: Sophie, Dan y Fred. La suma de sus alturas devuelve `NA`, esto se debe a que no conocemos la suma de un número y `NA`.
+
+Hay algunas "trampas" que debes tener en cuenta al trabajar con datos faltantes: Por ejemplo, `NaN` significa "Not a Number" (No es un número) y se obtiene de operaciones como la raíz cuadrada de -1. **R** interpreta `NaN` como un valor faltante. `NULL` es un valor vacío pero no es faltante. Esto es sutilmente diferente de los valores faltantes: un cubo vacío no tiene agua faltante. `Inf` es un valor infinito, y se obtiene de ecuaciones como 10 dividido por 0 y no es faltante.
+
+Por último, debeos tener cuidado con las declaraciones condicionales con valores faltantes. Por ejemplo, `NA` o `TRUE` es `TRUE`. `NA` o `FALSE` es `NA`. `NA` `+` `NaN` es `NA`. `NaN` `+` `NA` es `NaN`.
+
+
+## Usando y encontrando valores faltantes
+
+Al trabajar con datos faltantes, hay algunos comandos con los que deberías estar familiarizado - en primer lugar, debes poder identificar si hay valores faltantes y dónde se encuentran.
+
+Usando las herramientas `any_na()` y `are_na()`, identifica qué valores faltan.
+
+
+
+
+```{r}
+# creamos x, un vector, con valores NA, NaN, Inf, ".", y "missing"
+x <- c(NA, NaN,Inf, ".", "missing")
+
+# Usamos any_na() y are_na() para explorar los valores missings
+any_na(x)
+are_na(x)
+
+```
+
+
+**¿Cuántos valores faltantes hay?**
+
+Una de las primeras cosas que desearás comprobar en un nuevo conjunto de datos es si existen valores faltantes y cuántos hay.
+
+Podrías usar `are_na()` y contar los valores faltantes, pero la forma más eficiente de contarlos es usar la función `n_miss()`. Esto te dirá el número total de valores faltantes en los datos.
+
+Luego puedes encontrar el porcentaje de valores faltantes en los datos con la función `pct_miss`. Esto te dirá el porcentaje de valores faltantes en los datos.
+
+También puedes encontrar el complemento de estos valores, cuántos valores completos hay, usando `n_complete` y `pct_complete`.
+
+
+```{r}
+# Usando el dataframe de ejemplo de estatuta (heights) y pesos (weights) dat_hw
+dat_hw <- read.table("dealing/dat_hw.txt", h=T,  dec=".")
+```
+
+
+
+```{r}
+# Usa n_miss() para contar el numero total de valores missing en dat_hw
+naniar::n_miss(dat_hw)
+
+# Usa n_miss() en dat_hw$weight para contar el numero total de valores missing
+naniar::n_miss(dat_hw$weight)
+
+# Usa n_complete() en dat_hw para contar el numero total de valores completos
+n_complete(dat_hw)
+
+# Usa n_complete() en dat_hw$weight para contar el numero total de valores completos
+n_complete(dat_hw$weight)
+
+# Usamos prop_miss() y prop_complete() en dat_hw para contar el numero total de valores missing en cada una de las variables
+prop_miss(dat_hw)
+prop_complete(dat_hw)
+```
+
+**Resumiendo la ausencia de datos**
+
+Ahora que comprendes el comportamiento de los valores faltantes en R y cómo contarlos, escalaremos nuestros resúmenes para casos (filas) y variables, utilizando `miss_var_summary()` y `miss_case_summary()`, y también exploraremos cómo se pueden aplicar a grupos en un dataframe utilizando la función `group_by` de `dplyr`.
+
+```{r}
+# Summarise missingness in each variable of the `airquality` dataset
+miss_var_summary(airquality)
+
+
+# Summarise missingness in each case of the `airquality` dataset
+miss_case_summary(airquality)
+```
+
+```{r}
+# Return the summary of missingness in each variable, grouped by Month, in the `airquality` dataset
+airquality %>% group_by(Month) %>% miss_var_summary()
+
+# Return the summary of missingness in each case, grouped by Month, in the `airquality` dataset
+airquality %>% group_by(Month) %>% miss_case_summary()
+```
+
+
+###########################
+
+
+## Evaluación de la no respuesta
+
+### Actividad 
+
+Considerando el siguien set de datos.
+
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+biopics <- read.csv("curso_imputacion/biopics.csv")
+```
+
+Muestra las primeras 10 observaciones de los datos `biopics` y familiarízate con las variables.
+
+```{r}
+# Muestra las primeras 10 observaciones
+head(biopics, 10)
+
+# Obtiene el numero de valores perdidos por variable
+biopics %>%
+	is.na() %>% 
+	colSums()
+```
+
+### Reconociendo los mecanismos de datos faltantes
+
+En este ejercicio, se presentarán seis escenarios diferentes en los que faltan algunos datos. Intenta asignar a cada uno de ellos el mecanismo de datos faltantes más probable. Como recordatorio, aquí hay algunas pautas generales:
+
+Si la razón de la falta de datos es puramente aleatoria, es MCAR.
+Si la razón de la falta de datos puede explicarse por otra variable, es MAR.
+Si la razón de la falta de datos depende del valor faltante en sí mismo, es MNAR.
+
+![alt text](procesos_sp.png)
+
+
+##### Prueba t para perdida MAR
+
+###### **Preparación de los datos**
+
+De los tres, MAR es posiblemente el más importante de detectar, ya que muchos métodos de imputación asumen que los datos son MAR. En este ejercicio práctico con `R`, buscaremos identificar si el patrón de pérdida es MAR.
+
+Trabajaremos con los datos de la base `biopics`. El objetivo es probar si el número de valores faltantes en `earnings` difiere por género del sujeto. En este ejercicio, solo se preparan los datos para aplicar una *prueba t*. Primero, se crea una variable ficticia que indica la falta de datos en `earnings`. Luego, se divide por género filtrando los datos para mantener uno de los géneros y luego sacando la variable ficticia. Para filtrar, puede ser útil imprimir el `head()` de `biopics` en la consola y examinar la variable de género.
+
+
+
+```{r}
+# Crea una variable dummy para la perdida en el gasto
+biopics <- biopics %>% 
+  mutate(missing_earnings = is.na(earnings))
+
+# Obtiene la perdida del gasto para hombres
+missing_earnings_males <- biopics %>% 
+  filter(sub_sex == "Male") %>% 
+  pull(missing_earnings)
+
+# Obtiene la perdida del gasto para mujeres
+missing_earnings_females <- biopics %>% 
+  filter(sub_sex == "Female") %>% 
+  pull(missing_earnings)
+```
+
+###### **Interpretación**
+
+En el ejercicio anterior, hemos preparado dos vectores con los valores faltantes de ingresos para cada sexo: `perdidos_gastos_hombres` y `perdidos_gastos_mujeres`. Ambos están disponibles en tu espacio de trabajo. Ahora es posible realizar la **prueba t** para verificar si sus medias difieren significativamente entre sí con el siguiente script
+
+```{r}
+# Ejecuta el t-test
+t.test(missing_earnings_males, missing_earnings_females)
+```
+
+El resultado muestra que no existe diferencia estadísticamente significativa ($\alpha > 0.05$) entre ambos grupos. Por lo tanto, se concluye que la perdida es MAR.
+
+
+### Aggregation plot
+
+El gráfico de agregación proporciona la respuesta a la pregunta básica que uno puede hacer sobre un conjunto de datos incompleto: ¿en qué combinaciones de variables faltan datos y con qué frecuencia? Es muy útil para obtener una visión general de alto nivel de los patrones de ausencia de datos. Por ejemplo, hace visible inmediatamente si hay alguna combinación de variables que faltan juntas con frecuencia, lo que podría sugerir alguna relación entre ellas.
+
+En este ejercicio, primero aplicaremos el gráfico de agregación para los datos de `biopics` y luego practicarás sacando conclusiones basadas en él. ¡Vamos a hacer algunos gráficos!
+
+```{r}
+# Load the VIM package
+library(VIM)
+
+# Draw an aggregation plot of biopics
+biopics %>% 
+	aggr(combined = TRUE, numbers = TRUE)
+```
+
+### Cuestiones aclaratorias
+
+Basado en el gráfico de agregación que acaba de crear, ¿cuál de las siguientes afirmaciones es falsa?
+
+Posibles respuestas:
+
+a. El 10% de las observaciones tienen valores faltantes tanto en `earnings` como en `sub_race`.
+
+b. Hay más valores faltantes en `sub_race` que en `earnings`.
+
+c. El 42% de las observaciones no tiene entradas faltantes.
+
+d. Exactamente dos variables en los datos `biopics` tienen valores faltantes.
+
+
+### gráfico de Mosaico
+
+El gráfico de agregación que has dibujado en el ejercicio anterior te dio una visión general de alto nivel de los datos faltantes. Si estás interesado en la interacción entre variables específicas, un gráfico de Mosaico es el camino a seguir. Te permite estudiar el porcentaje de valores faltantes en una variable para diferentes valores de la otra, lo cual es conceptualmente muy similar a los test t que has estado realizando en la lección anterior.
+
+En este ejercicio, dibujarás un gráfico de Mosaico para investigar el porcentaje de datos faltantes en `earnings` para diferentes categorías de `sub_race`. ¿Hay más datos faltantes en `earnings` para algunas razas específicas del personaje principal de la película? ¡Vamos a descubrirlo! El paquete `VIM` ya ha sido cargado para ti.
+
+
+```{r}
+# Draw a spine plot to analyse missing values in earnings by sub_race
+
+biopics %>% 
+	dplyr::select(sub_race,earnings) %>%
+	spineMiss()
+```
+### Cuestiones aclaratorias
+
+Basándose en la gráfica de Mosaico que acabas de crear, ¿cuál de las siguientes afirmaciones es falsa?
+
+Opciones de respuesta:
+
+a. En la gran mayoría de las películas, el personaje principal es blanco.
+
+b. Cuando el sujeto principal es africano, es más probable que tengamos información completa sobre las ganancias.
+
+c. En lo que respecta a las ganancias y la subraza, los datos parecen ser MAR.
+
+d. La raza que aparece con menos frecuencia en los datos tiene alrededor del 40% de las ganancias faltantes. (incorrecta)
+
+### Mosaic plot
+
+La gráfica de Mosaico que hemos creado en el ejercicio anterior permite estudiar los patrones de datos faltantes entre dos variables a la vez. Esta idea se generaliza a más variables en forma de un gráfico de mosaico.
+
+En este ejercicio, comenzarás por crear una variable ficticia que indique si Estados Unidos participó en la producción de cada película. Para hacer esto, utilizarás la función `grepl()`, que verifica si la cadena pasada como su primer argumento está presente en el objeto pasado como su segundo argumento. Luego, crearemos un gráfico de mosaico para ver si el género del sujeto se correlaciona con la cantidad de datos faltantes en `earnings` tanto para películas estadounidenses como no estadounidenses.
+
+
+```{r}
+# Prepare data for plotting and draw a mosaic plot
+biopics %>%
+	# Create a dummy variable for US-produced movies
+	mutate(is_US_movie = grepl("US", country)) %>%
+	# Draw mosaic plot
+	mosaicMiss(highlight = "earnings", 
+             plotvars = c("is_US_movie", "sub_sex"))
+
+
+```
+
+### Olfateando el peligro de la imputación por la media
+
+Uno de los métodos de imputación más populares es la imputación por media, en la cual los valores faltantes en una variable se reemplazan con la media de los valores observados en esa variable. Sin embargo, en muchos casos, este enfoque simple es una mala elección. A veces, una mirada rápida a los datos puede alertarnos sobre los peligros de la imputación por la media.
+
+En esta etapa, trabajaremos con una submuestra de los datos del proyecto de *Atmósfera Tropical Oceánica* (`tao`). El conjunto de datos consiste en mediciones atmosféricas tomadas en dos períodos de tiempo diferentes en cinco ubicaciones distintas. Los datos vienen con el paquete `VIM`.
+
+En este ejercicio, nos familiarizaremos con los datos y realizaremos un análisis simple que indicará cuáles podrían ser las consecuencias de la imputación por la media.
+
+```{r}
+data(tao, package = "VIM")
+names(tao)<-tolower(names(tao))
+names(tao)<-sub("[.]", "_", names(tao))
+names(tao)<-sub("[.]", "_", names(tao))
+
+# Imprime las primeras 10 observaciones
+head(tao, 10)
+
+# Obtiene el numero de valores perdidos por columna
+tao %>%
+  is.na() %>% 
+  colSums()
+
+# Calculate the number of missing values in air_temp per year
+tao %>% 
+  group_by(year) %>% 
+  summarize(num_miss = sum(is.na(air_temp)))
+```
+
+### Imputación de la media en temperatura
+
+Imputar la media en la temperatura puede ser arriesgado. Si la variable que se está imputando está correlacionada con otras variables, esta correlación podría ser destruida por los valores imputados. Lo viste en el ejercicio anterior cuando analizaste la variable `air_temp`.
+
+Para averiguar si estas preocupaciones son válidas, en este ejercicio realizarás una imputación de la media en `air_temp`, creando también un indicador binario para mostrar dónde se imputan los valores. Será útil en el siguiente ejercicio, cuando evaluarás el desempeño de tu imputación. ¡Vamos a completar esos valores faltantes!
+
+```{r}
+tao_imp <- tao %>% 
+  # Create a binary indicator for missing values in air_temp
+  mutate(air_temp_imp = ifelse(is.na(air_temp), TRUE, FALSE)) %>%
+  # Impute air_temp with its mean
+  mutate(air_temp = ifelse(is.na(air_temp), mean(air_temp, na.rm = TRUE), air_temp))
+
+# Print the first 10 rows of tao_imp
+head(tao_imp, 10)
+```
+```{r}
+head(filter(tao_imp, air_temp_imp==TRUE))
+```
+
+Nos damos cuenta que no tiene mucho sentido imputar por la media, ya que puede agregar inconsistencias entre las variables correlacionadas.
+
+
+### Evaluar la calidad de la imputación con un marginplot
+
+En el último ejercicio, hemos imputado la media de `air_temp` y hemos agregado una variable indicadora para denotar cuáles valores fueron imputados, llamada `air_temp_imp`. Ahora es momento de ver qué tan bien funciona esto.
+
+Al examinar los datos de `tao`, podríamos haber notado que también contiene una variable llamada `sea_surface_temp`, que razonablemente se esperaría que esté positivamente correlacionada con `air_temp`. Si ese es el caso, esperaríamos que estas dos temperaturas sean altas o bajas al mismo tiempo. Imputar la temperatura media del aire cuando la temperatura del mar es alta o baja rompería esta relación.
+
+Para averiguarlo, en este ejercicio seleccionaremos las dos variables de temperatura y la variable indicadora y las usaremos para crear un `marginplot`. 
+
+
+```{r}
+# Creamos un marginplot de air_temp vs sea_surface_temp
+tao_imp %>% 
+  select(air_temp, sea_surface_temp, air_temp_imp) %>%
+  marginplot(delimiter = "imp")
+```
+
+### Imputación por hot-deck
+
+La imputación por hot-deck es un método simple que reemplaza cada valor faltante en una variable por el último valor observado en esa variable. Es muy rápido, ya que solo se necesita una revisión por los datos, pero en su forma más simple, hot-deck a veces puede romper las relaciones entre las variables.
+
+En este ejemplo, lo probaremos en el conjunto de datos `tao`. Imputaremos los valores faltantes en la columna de temperatura del aire `air_temp` por hot-deck y luego visualizaremos un gráfico de margen (`marginplot`) para analizar la relación entre los valores imputados y la columna de temperatura de la superficie del mar `sea_surface_temp`.
+
+```{r}
+# Load VIM package
+library(VIM)
+
+# Impute air_temp in tao with hot-deck imputation
+tao_imp <- hotdeck(tao, variable = "air_temp")
+
+# Check the number of missing values in each variable
+tao_imp %>% 
+	is.na() %>% 
+	colSums()
+
+# Draw a margin plot of air_temp vs sea_surface_temp
+tao_imp %>% 
+	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
+	marginplot(delimiter = "imp")
+```
+ ¿Se ve bien la imputación? Observa las observaciones en la parte superior izquierda del gráfico con los datos de `air_temp` imputados y los valores altos en `sea_surface_temp`. Estas observaciones deben haber sido precedidas por observaciones con bajos valores de `air_temp` en el `data frame`, y por lo tanto, después de la imputación hot-deck, terminaron siendo valores atípicos con  `air_temp` bajos y `sea_surface_temp` altos.
+ 
+### Hot-deck trucos y consejos I: imputando dentro de dominios
+
+Un truco que puede ayudar cuando la imputación por hot-deck rompe las relaciones entre las variables es imputar dentro de los dominios. Esto significa que si la variable a imputar está correlacionada con otra variable categórica, se puede ejecutar hot-deck por separado para cada una de sus categorías.
+
+Por ejemplo, se podría esperar que la temperatura del aire dependa del tiempo, ya que estamos viendo que las temperaturas promedio aumentan debido al calentamiento global. El indicador de tiempo que tenemos disponible en los datos de `tao` es una variable categórica, `year`. Primero, comprobaremos si la temperatura media del aire es diferente en cada uno de los dos años estudiados y luego ejecutaremos hot-deck dentro de los dominios de los años. Finalmente, volveremos a crear el `marginplot` para evaluar el rendimiento de la imputación.
+
+```{r}
+# Calculate mean air_temp per year
+tao %>% 
+	group_by(year) %>% 
+	summarize(average_air_temp = mean(air_temp, na.rm = TRUE))
+
+# Hot-deck-impute air_temp in tao by year domain
+tao_imp <- hotdeck(tao, variable = "air_temp", domain_var = "year")
+
+# Draw a margin plot of air_temp vs sea_surface_temp
+tao_imp %>% 
+	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
+	marginplot(delimiter = "imp")
+```
+Los resultados se ven mucho mejor esta vez. Sin embargo, si observas la esquina superior derecha del gráfico, verás que la varianza en los valores imputados (naranja) es algo mayor que entre los valores observados (azul). Veamos si podemos mejorar aún más en el próximo ejercicio.
+
+
+### Hot-deck trucos y consejos II: ordenando por variables correlacionadas
+
+Otro truco que puede mejorar el rendimiento de la imputación hot-deck es ordenar los datos por variables correlacionadas con la que queremos imputar.
+
+Por ejemplo, en todos los `marginplot` que hemos estado usando recientemente, se ha visto que la temperatura del aire está fuertemente correlacionada con la temperatura de la superficie del mar, lo cual tiene mucho sentido. Podemos aprovechar este conocimiento para mejorar la imputación hot-deck. Si primero ordenamos los datos por `sea_surface_temp`, entonces cada valor imputado de `air_temp` vendrá de un donante con una `sea_surface_temp` similar.
+
+```{r}
+# Hot-deck-impute air_temp in tao ordering by sea_surface_temp
+tao_imp <- hotdeck(tao, variable = "air_temp", ord_var = "sea_surface_temp")
+
+# Draw a margin plot of air_temp vs sea_surface_temp
+tao_imp %>% 
+	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
+	marginplot(delimiter = "imp")
+```
+
+Esta vez la imputación parece no afectar la relación entre las temperaturas del aire y la superficie del mar: si no fuera por los colores, probablemente no sabriamos cuáles son los valores imputados. La imputación hot-deck, posiblemente mejorada con la imputación por dominios o el ordenamiento, es un método rápido y sencillo que puede funcionar bien en muchas situaciones. Sin embargo, a veces puede ser necesario un enfoque más complejo. 
+
+
+### Elegir el número de vecinos
+
+La imputación de k-Nearest-Neighbors (o kNN) imputa los valores faltantes en una observación en función de los valores que provienen de las $k$ otras observaciones más similares a ella. El número de estas observaciones similares, llamadas vecinos, se consideran que es un parámetro que debe elegirse de antemano.
+
+¿Cómo elegir $k$? Una forma es probar diferentes valores y ver cómo afectan las relaciones entre los datos imputados y observados.
+
+Intentemos imputar `humidity` en los datos de `tao` utilizando tres valores diferentes de $k$ y ver cómo se ajustan los valores imputados a la relación entre `humidity` y `sea_surface_temp`.
+
+Imputamos `humidity` con la imputación de kNN usando 30 vecinos y visualizadolo mediante un `marginplot()` de `sea_surface_temp` vs `humidity`.
+
+```{r}
+# Impute humidity using 30 neighbors
+tao_imp <- kNN(tao, k = 30, variable = "humidity")
+
+# Draw a margin plot of sea_surface_temp vs humidity
+tao_imp %>% 
+	select(sea_surface_temp, humidity, humidity_imp) %>% 
+	marginplot(delimiter = "imp", main = "k = 30")
+```
+
+Ahora, imputamos `humidity` con imputación kNN usando 15 vecinos y vemos mediante el `marginplot` de `sea_surface_temp` vs `humidity`.
+
+```{r}
+# Impute humidity using 15 neighbors
+tao_imp <- kNN(tao, k = 15, variable = "humidity")
+
+# Draw a margin plot of sea_surface_temp vs humidity
+tao_imp %>% 
+	select(sea_surface_temp, humidity, humidity_imp) %>% 
+	marginplot(delimiter = "imp", main = "k = 15")
+```
+
+Finalmente, imputamos `humidity` con imputación kNN usando 5 vecinos y visualizando los resulados mediante `marginplot` de `sea_surface_temp` vs `humidity`.
+
+
+```{r}
+# Impute humidity using 5 neighbors
+tao_imp <- kNN(tao, k = 5, variable = "humidity")
+
+# Draw a margin plot of sea_surface_temp vs humidity
+tao_imp %>% 
+	select(sea_surface_temp, humidity, humidity_imp) %>% 
+	marginplot(delimiter = "imp", main = "k = 5")
+```
+
+### kNN trucos y consejos I: ponderando los donantes
+
+Una variación de la imputación `kNN` que se aplica con frecuencia utiliza la llamada agregación ponderada por distancia. Lo que esto significa es que cuando agregamos los valores de los vecinos para obtener un reemplazo para un valor faltante, lo hacemos usando la media ponderada y las ponderaciones son las distancias invertidas de cada vecino. Como resultado, los vecinos más cercanos tienen más impacto en el valor imputado.
+
+En este ejercicio, aplicamos la agregación ponderada por distancia mientras imputamos los datos de `tao`. Esto solo requerirá dar dos argumentos adicionales a la función `kNN()`.
+
+
+```{r}
+# Load the VIM package
+library(VIM)
+
+# Impute humidity with kNN using distance-weighted mean
+tao_imp <- kNN(tao, 
+               k = 5, 
+               variable = "humidity", 
+               numFun = weighted.mean,
+               weightDist = TRUE)
+
+tao_imp %>% 
+	select(sea_surface_temp, humidity, humidity_imp) %>% 
+	marginplot(delimiter = "imp")
+```
+### Trucos y consejos de kNN II: ordenar variables
+
+Mientras el algoritmo de k-Nearest Neighbors recorre las variables en los datos para imputarlos, calcula las distancias entre observaciones utilizando otras variables, algunas de las cuales ya han sido imputadas en los pasos anteriores. Esto significa que si las variables ubicadas al principio de los datos tienen muchas valores faltantes, entonces el cálculo de la distancia posterior se basa en muchos valores imputados. Esto introduce ruido en el cálculo de la distancia.
+
+Por esta razón, una buena práctica es ordenar las variables por el número de valores faltantes antes de realizar la imputación kNN. De esta manera, cada cálculo de distancia se basa en tantos datos observados y tan pocos datos imputados como sea posible.
+
+
+```{r}
+# Get tao variable names sorted by number of NAs
+vars_by_NAs <- tao %>%
+  is.na() %>%
+  colSums() %>%
+  sort(decreasing = FALSE) %>% 
+  names()
+
+# Sort tao variables and feed it to kNN imputation
+tao_imp <- tao %>% 
+  select(vars_by_NAs) %>% 
+  kNN(k= 5)
+
+tao_imp %>% 
+	select(sea_surface_temp, humidity, humidity_imp) %>% 
+	marginplot(delimiter = "imp")
+```
+El kNN que acabamos de programar debería ser más preciso y resistente a imputaciones defectuosas, así que recordemos ordenar las variables primero antes de realizar la imputación con kNN. 
+
+
+### Imputación con regresión lineal
+
+A veces, se puede utilizar el conocimiento del dominio, la investigación previa o simplemente el sentido común para describir las relaciones entre las variables en sus datos. En tales casos, la imputación basada en modelos es una gran solución, ya que permite imputar cada variable de acuerdo con un modelo estadístico que puede especificar uno mismo, teniendo en cuenta cualquier suposición que pueda tener sobre cómo las variables impactan entre sí.
+
+Para variables continuas, una elección de modelo popular es la regresión lineal. Siempre puede incluir un cuadrado o un logaritmo de una variable en los predictores. En este caso, trabajaremos con el paquete `simputation` para ejecutar una sola imputación de regresión lineal en los datos `tao` y analizar los resultados.
+
+
+```{r, message=FALSE}
+# Lee la libreria simputation
+library(simputation)
+
+# Imputa air_temp y humidity con una regresion lineal
+formula <- air_temp + humidity ~ year + latitude + sea_surface_temp
+tao_imp <- impute_lm(tao, formula)
+```
+
+
+
+
+```{r}
+# Obtenemos el numero de valores missing por columna
+tao_imp %>% 
+  is.na() %>% 
+  colSums()
+```
+
+```{r}
+# Imprime las celdas de tao_imp en donde air_temp o humidity siguen missing 
+tao_imp %>% 
+  filter(is.na(air_temp) | is.na(humidity))
+```
+
+
+La regresión lineal falla cuando al menos uno de los predictores está ausente. En este caso, fue `sea_surface_temp`. En el próximo ejercicio, lo solucionaremos inicializando los valores faltantes antes de ejecutar `impute_lm()`.
+
+
+### Inicialización de valores perdidos e iteración sobre variables
+
+Como acabamos de ver, la ejecución de `impute_lm()` podría no llenar todos los valores perdidos. Para asegurarte de imputar todos ellos, debemos inicializar los valores perdidos con un método simple, como la imputación de hot-deck que de la sección anterior, que simplemente retroalimenta el último valor observado.
+
+Además, una sola imputación generalmente no es suficiente. Se basa en los valores iniciales básicos y podría estar sesgada. Un enfoque adecuado es iterar sobre las variables, imputándolas una a la vez en las ubicaciones donde originalmente faltan.
+
+En este ejercicio, primero inicializaremos los valores perdidos con la imputación de hot-deck y luego iteraremos cinco veces sobre `air_temp` y `humidity` de los datos `tao` para imputarlos con la regresión lineal.
+
+
+```{r}
+# Inicializa los valores missing con hot-deck
+tao_imp <- hotdeck(tao)
+
+# Crea un indicador booleano desde donde air_temp y humidity son missing
+missing_air_temp <- tao_imp$air_temp_imp
+missing_humidity <- tao_imp$humidity_imp
+
+for (i in 1:5) {
+  # Define air_temp como NA en los lugares donde faltaban originalmente y re-imputa
+  tao_imp$air_temp[missing_air_temp] <- NA
+  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
+  # Define humidity como NA en los lugares donde faltan originalmente y  re-imputa
+  tao_imp$humidity[missing_humidity] <- NA
+  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
+}
+```
+Esa es una aproximación apropiada a la imputación basada en modelos que acabamos de codificar, pero, ¿cómo sabemos que 5 es el número adecuado de iteraciones para ejecutar?.
+
+
+### Detectando convergencia
+
+¿Cuántas iteraciones son necesarias? Cuando los valores imputados no cambian con la nueva iteración, podemos detenernos.
+
+Ahora extenderás nuestro código para calcular las diferencias entre las variables imputadas en las iteraciones subsiguientes. Para hacer esto, usaremos la función de cambio porcentual promedio absoluto (`mapc`), definida de la siguiente manera:
+
+`mapc <- function(a, b) {
+  mean(abs(b - a) / a, na.rm = TRUE)
+}`
+
+`mapc()` es una función que devuelve un solo número que te dice cuánto difiere $b$ de $a$. La usaremos para verificar cuánto cambian las variables imputadas en las iteraciones siguientes. En base a esto, decidiremos cuántas iteraciones son necesarias.
+
+Los indicadores booleanos `missing_air_temp` y `missing_humidity` son usados aquí, al igual que los datos de `tao_imp` inicializados con hot-deck.
+
+
+```{r}
+mapc<- function(a, b) {
+  mean(abs(b - a) / a, na.rm = TRUE)
+}
+
+```
+
+```{r}
+diff_air_temp <- c()
+diff_humidity <- c()
+
+for (i in 1:5) {
+  # Asigna el resultado de la iteración anterior (o inicialización) a prev_iter
+  prev_iter <- tao_imp
+  # Imputa air_temp y humidity en las ubicaciones que originalmente faltaban
+  tao_imp$air_temp[missing_air_temp] <- NA
+  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
+  tao_imp$humidity[missing_humidity] <- NA
+  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
+  # Calcula MAPC para air_temp y humidity y los incluye a la iteración anterior de MAPC
+  diff_air_temp <- c(diff_air_temp, mapc(prev_iter$air_temp, tao_imp$air_temp))
+  diff_humidity <- c(diff_humidity, mapc(prev_iter$humidity, tao_imp$humidity))
+}
+```
+
+¿Cuál es un número suficiente de iteraciones para ejecutar, según las diferencias almacenadas en `diff_air_temp` y `diff_humidity`?
+
+Para responder a esta pregunta, puedemos imprimir los dos vectores en la consola y analizar los números, o trazarlos usando la función proporcionada: simplemente ejecutamos `plot_diffs(diff_air_temp, diff_humidity)` en la consola.
+
+```{r}
+plot_diffs <- function(a, b) {
+  data.frame("mapc" = c(a, b),
+             "Variable" = c(rep("air_temp", length(a)),
+                            rep("humidity", length(b))),
+             "Iteraciones" = c(1:length(a), 1:length(b))) %>% 
+    ggplot(aes(Iteraciones, mapc, color = Variable)) +
+    geom_line(size = 1.5) +
+    ylab("Media del cambio porcentual absoluto (mapc)") +
+    ggtitle("Cambio de las variables imputadas entre las iteraciones.") +
+    theme(legend.position = "bottom")
+}
+```
+
+
+```{r}
+plot_diffs(diff_air_temp, diff_humidity)
+```
+
+### Imputación por regresión logística
+
+Una opción popular para imputar variables binarias es la regresión logística. Desafortunadamente, no hay una función similar a `impute_lm()` que lo haga. Por eso crearemos una función para ello.
+
+Llamemos a la función `impute_logreg()`. Su primer argumento será un data frame `df`, cuyos valores faltantes se han inicializado y solo contiene valores faltantes en la columna a imputar. El segundo argumento será una fórmula para el modelo de regresión logística.
+
+La función hará lo siguiente:
+
+1. Mantendrá las ubicaciones de los valores faltantes.
+2. Construirá el modelo.
+3. Realizará predicciones.
+4. Reemplazará los valores faltantes con las predicciones.
+
+No te preocupes por la línea que crea `imp_var` - esto es solo una forma de extraer el nombre de la columna a imputar de la fórmula.
+
+```{r}
+impute_logreg <- function(df, formula) {
+  # Extrae el nombre de la variable respuesta
+  imp_var <- as.character(formula[2])
+  # Guarda los lugares donde la respuesta es missing
+  missing_imp_var <- is.na(df[imp_var])
+  # Ajusta una regresion del modo logistica
+  logreg_model <- glm(formula, data = df, family = binomial)
+  # Predice la respuesta y la convierte 0s y 1s
+  preds <- predict(logreg_model, type = "response")
+  preds <- ifelse(preds >= 0.5, 1, 0)
+  # Imputa los valores missing con las predicciones
+  df[missing_imp_var, imp_var] <- preds[missing_imp_var]
+  return(df)
+}
+```
+
+La función está completamente operativa y se puede enchufar en el bucle sobre las variables que viste en la sección previa, al igual que `impute_lm()` del paquete `simputation`. Pronto, combinaremos estos dos para imputar tanto variables continuas como binarias. Pero antes, mejoraremos `impute_logreg()` para que reproduzca mejor la variabilidad en los datos imputados.
+
+
+### Crear una distribución condicional
+
+Simplemente llamar a `predict()` en un modelo siempre devolverá el mismo valor para los mismos valores de los predictores. Esto da como resultado una pequeña variabilidad en los datos imputados. Para aumentarla y que la imputación replique la variabilidad de los datos originales, que podemos extraer de la distribución condicional. Esto significa que en lugar de siempre predecir 1 cuando el modelo devuelve una probabilidad mayor que `0.5` , podemos extraer la predicción de una distribución binomial descrita por la probabilidad devuelta por el modelo.
+
+Trabajaremos en el código del ejercicio anterior. La siguiente línea fue eliminada:
+
+`preds <- ifelse(preds >= 0.5, 1, 0)`
+
+Nuestra tarea es llenar su lugar con la creación de una distribución binomial.
+
+```{r}
+ impute_logreg <- function(df, formula) {
+  # Extrae el nombre de la variable respuesta
+  imp_var <- as.character(formula[2])
+  # Guarda las posiciones donde la respuesta es missing
+  missing_imp_var <- is.na(df[imp_var])
+  # Ajusta una regresion del modo logistico
+  logreg_model <- glm(formula, data = df, family = binomial)
+  # Predice la respuesta
+  preds <- predict(logreg_model, type = "response")
+  # Toma una muestra de las predicciones de la distribución binomial
+  # preds <- ifelse(preds >= 0.5, 1, 0)
+  preds <- rbinom(length(preds), size = 1, prob = preds)
+  # Imputa los valores missing con las predicciones
+  df[missing_imp_var, imp_var] <- preds[missing_imp_var]
+  return(df)
+}
+```
+
+Crear la distribución condicional hará que la variabilidad de los datos imputados sea mucho parecida a la del conjunto de datos observados originales. Con esta potente función en nuestras manos, ahora podemos diseñar un flujo de imputación basado en modelos que se encargue tanto de variables continuas como binarias. 
+
+### Imputación basada en modelos con varios tipos de variables
+
+En este ejercicio, combinaremos lo que hemos aplicado hasta ahora sobre imputación basada en modelos para imputar diferentes tipos de variables en los datos de `tao`.
+
+Nuestra tarea es iterar sobre las variables como lo hemos hecho previamente e imputar dos variables:
+
+`is_hot`, una nueva variable binaria que se creó a partir de `air_temp`, que es 1 si `air_temp` está a 26 grados o más y 0 de lo contrario; `humidity`, una variable continua con la que ya estamos familiarizados.
+
+Tendremos que utilizar la función de regresión lineal que aprendimos antes, así como la función para la regresión logística.
+
+
+```{r}
+tao$is_hot<-ifelse(tao$air_temp>= 26, 1,0)
+```
+
+
+```{r}
+# Inicializamos los valores missing con hot-deck
+tao_imp <- hotdeck(tao)
+
+# Creamos el indicador booleano desde donde is_hot y humidity son missing
+missing_is_hot <- tao_imp$is_hot_imp
+missing_humidity <- tao_imp$humidity_imp
+
+for (i in 1:3) {
+  # Define is_hot como NA en los lugares donde fue originalmente missing y re-imputa
+  tao_imp$is_hot[missing_is_hot] <- NA
+  tao_imp <- impute_logreg(tao_imp, is_hot ~ sea_surface_temp)
+  # Define humidity como NA en los lugares donde fue originalmente missing y re-imputa
+  tao_imp$humidity[missing_humidity] <- NA
+  tao_imp <- impute_lm(tao_imp, humidity ~ sea_surface_temp + air_temp)
+}
+```
+
+
+
+### Imputación con bosques aleatorios
+
+Un enfoque de aprendizaje automático para la imputación puede ser más preciso y más fácil de implementar en comparación con modelos estadísticos tradicionales. Primero, no requiere que especifiques relaciones entre variables. Además, los modelos de aprendizaje automático como los *random forest* son capaces de descubrir relaciones altamente complejas y no lineales y explotarlas para predecir valores faltantes.
+
+En este ejercicio, usaremos el paquete `missForest`, que construye un bosque aleatorio separado para predecir valores faltantes para cada variable, uno por uno. Llamaremos a la función de imputación sobre los datos de películas, `biopics`, con los que hemos trabajado anteriormente y luego extraeremos los datos completos, así como los errores de imputación estimados.
+
+```{r, message=FALSE, warning=FALSE}
+# leemos nuevamente los datos
+biopics <-read.csv("curso_imputacion/biopics.csv")
+# cargamos la libreria
+library(missForest)
+
+# trasformación de character a factor
+biopics <- type.convert(biopics, as.is=FALSE)
+
+
+# imputa los datos de biopics usando missForest
+imp_res <- missForest(biopics)
+
+# Extrae los datos imputados y revisa por valores missing
+imp_data <- imp_res$ximp
+print(sum(is.na(imp_data)))
+
+```
+
+```{r}
+# Extrae e imprime los errores de imputacion
+imp_err <- imp_res$OOBerror
+print(imp_err)
+```
+
+
+
+
+En el ejercicio anterior hemos extraído los errores de imputación estimados a partir de la salida de `missForest`. Esto te dio dos números:
+
+el error cuadrático medio raíz normalizado (NRMSE) para todas las variables continuas;
+la proporción de entradas falsamente clasificadas (PFC) para todas las variables categóricas.
+
+Sin embargo, podría darse el caso de que el modelo de imputación funcione muy bien para una variable continua y muy mal para otra. Para diagnosticar tales casos, basta con decirle a `missForest` que produzca estimaciones de error por variable. Esto se hace estableciendo el argumento `variablewise` en `TRUE`.
+
+```{r}
+# Imputa los datos de biopics con missForest calculando los errores por variable
+imp_res <- missForest(biopics, variablewise = TRUE)
+
+# Extrae e imprime los errores de imputacion
+per_variable_errors <- imp_res$OOBerror
+print(per_variable_errors)
+```
+
+
+
+
+```{r}
+# Renombra las columnas para incluir el nombre de las variables
+names(per_variable_errors) <- paste(names(biopics), 
+                                    names(per_variable_errors),
+                                    sep = "_")
+
+# Imprime los errores renombrados
+print(per_variable_errors)
+```
+
+
+Observa cómo produjimos una serie de medidas de error en lugar de las dos por defecto que habiamos visto antes. Ahora podemos evaluar la calidad de imputación para cada variable por separado. Esto es útil cuando necesitamos saber cómo se desempeña el modelo para una variable en particular que deseamos modelar o analizar más a fondo.
+
+### Trade-off velocidad-precisión
+
+En este sentido existen dos paramétros que podemos ajustar para influir en el rendimiento de los bosques aleatorios (*random forest*):
+
+. Número de árboles de decisión en cada bosque.
+. Número de variables utilizadas para la división dentro de los árboles de decisión.
+
+Aumentar cada uno de ellos puede mejorar la precisión del modelo de imputación, pero también requerirá más tiempo para ejecutarse. En este ejercicio, exploraremos estas ideas ajustando `missForest()` a los datos de `biopics` dos veces con diferentes configuraciones. Mientras seguimos estos pasos, pongamos atención a los errores que imprimiremos y al tiempo que tomará la ejecución del código.
+
+```{r}
+# Determina el tiempo inicial del primer enfoque
+ t <- proc.time()
+
+# Define el numero de arboles a 5 y el numero de variables usadas para dividir en 2
+imp_res <- missForest(biopics, mtry = 2, ntree = 5)
+tiempo1<-proc.time() - t
+# Imprime los resultados de los errores de la imputacion
+print(imp_res$OOBerror)
+```
+
+```{r}
+# Determina el tiempo inicial del segundo enfoque
+ t <- proc.time()
+# Define el numero de arboles a 50 y el numero de variables usadas para dividir en 6
+imp_res <- missForest(biopics, mtry = 6, ntree = 50)
+tiempo2<-proc.time() - t
+# Imprime los errores resultantes de la imputacion
+print(imp_res$OOBerror)
+```
+Compara los errores y los tiempos de ejecución de los dos modelos de imputación. ¿Puedes ver una relación? Como dicen, "no hay nada gratuito". Para obtener una imputación más precisa, tuvimos que invertir más tiempo de computación.
+
+```{r}
+tiempo1
+tiempo2
+```
+
+
+##################################################################
+##################################################################
+##################################################################
+
+### La imputación y el modelado en una función
+
+Siempre que realice cualquier análisis o modelado en datos imputados, debe tener en cuenta la incertidumbre de la imputación. Ejecutar un modelo en un conjunto de datos imputados, se ignora el hecho de que la imputación estima los valores faltantes con incertidumbre. Los errores estándar de dicho modelo tienden a ser demasiado pequeños. La solución a esto es la imputación múltiple y una forma de implementarla es mediante bootstrap.
+
+Trabajaremos con los datos `biopics`. El objetivo es utilizar la imputación múltiple mediante bootstrap y la regresión lineal para ver si, en función de los datos disponibles, las películas biográficas con mujeres ganan menos que las de hombres.
+
+Comencemos escribiendo una función que construya una muestra de bootstrap, la impute y ajuste un modelo de regresión lineal.
+
+```{r}
+calc_gender_coef <- function(data, indices) {
+  # Obtener una muestra bootstrap
+  data_boot <- data[indices, ]
+  # Imputa con imputacion kNN
+  data_imp <- kNN(data_boot, k = 5)
+  # Ajusta una regresion lineal
+  linear_model <- lm(earnings ~ sub_sex + sub_type + year, data = data_imp)
+  # Extrae y calcula coeficiente para gender 
+  gender_coefficient <- coef(linear_model)[2]
+  return(gender_coefficient)
+}
+```
+
+La función `calc_gender_coef()` toma los datos y los índices de bootstrap como entradas, y produce nuestra estadística de interés: el impacto del género en las ganancias de la regresión lineal. Ahora podemos usar esta función en el algoritmo de bootstrapping.
+
+### Ejecutando bootstrap
+
+Esta función crea una muestra de bootstrap, la imputa y produce el coeficiente de regresión lineal que describe el impacto de que el tema de la película sea femenino en las ganancias de la película.
+
+En este ejercicio, usarás el paquete `boot` para obtener una distribución de bootstrap de estos coeficientes. La propagación de esta distribución capturará la incertidumbre de la imputación. También verás cómo la distribución de bootstrap difiere de una imputación y regresión.
+
+
+```{r}
+# Carga la libreria boot
+library(boot)
+
+# Ejecuta bootstrap sobre los datos biopics
+boot_results <- boot(biopics, statistic = calc_gender_coef, R = 50)
+
+# Imprime y grafica los resultados del bootstrapping
+print(boot_results)
+```
+```{r}
+plot(boot_results)
+```
+
+
+Si hubieramos ejecutado la imputación `kNN` y el análisis de regresión en los datos de `biopics` solo una vez, habríamos obtenido un coeficiente de `-1.45` para las películas sobre mujeres (llamado "original" en la salida de la consola), lo que sugiere que las películas sobre mujeres ganan menos. Sin embargo, al corregir la incertidumbre de la imputación, hemos obtenido una distribución que cubre tanto valores negativos como positivos.
+
+
+### Bootstrapping para intervalos de confianza
+
+Después de haber generado la distribución del coeficiente del efecto femenino en el último ejercicio, ahora podemos usarla para estimar un intervalo de confianza. Esto permitirá hacer la siguiente evaluación sobre los datos: "Dada la incertidumbre de la imputación, estamos 95% seguros de que el efecto femenino en las ganancias se encuentra entre `a` y `b`", donde `a` y `b` son los límites inferior y superior del intervalo.
+
+En el último ejercicio, ejecutamos la técnica de bootstrapping con `R = 50` réplicas. Sin embargo, en la mayoría de las aplicaciones esto no es suficiente. En este ejercicio, puedes utilizar los `boot_results` que se prepararon utilizando 1000 réplicas. Primero, verás si la distribución de bootstrapping parece normal. Si es así, entonces podrás confiar en la distribución normal para calcular el intervalo de confianza.
+
+```{r,echo=TRUE, eval=FALSE}
+# Ejecuta bootstrap sobre los datos biopics y mide el tiempo de ejecucion
+boot_results <- boot(biopics, statistic = calc_gender_coef, R = 1000)
+```
+
+```{r, echo=FALSE}
+boot_results<-readRDS("boot_results.RDS")
+```
+
+
+```{r}
+# Plot and print boot_results
+plot(boot_results)
+print(boot_results)
+```
+
+
+```{r}
+# Calculate and print confidence interval
+boot_ci <- boot.ci(boot_results, conf = 0.95, type = "norm")
+print(boot_ci)
+```
+
+A pesar de que la tendencia general parece ser una relación negativa, las réplicas de bootstrap muestran que algunas películas con protagonistas femeninas en realidad ganan más. Al tener en cuenta la incertidumbre de la imputación, no se puede estar al 100% seguro acerca de la dirección de esta relación, aunque un análisis único sugiera lo contrario.
+
+### El flujo de MICE: mice - with - pool
+
+El flujo de `MICE` (imputación múltiple por ecuaciones encadenadas) nos permite estimar la incertidumbre de la imputación mediante la imputación de un conjunto de datos varias veces mediante la imputación basada en modelos, mientras se extrae de las distribuciones condicionales. De esta manera, cada conjunto de datos imputados es ligeramente diferente. Luego, se realiza un análisis en cada uno de ellos y se combinan los resultados, obteniendo las cantidades de interés junto con sus intervalos de confianza que reflejan la incertidumbre de la imputación.
+
+En este ejercicio, practicaremos el flujo típico de la imputación con `MICE`: `mice()` - `with()` - `pool()`. Realizaremos un análisis de regresión en los datos de `biopics` para ver qué tipo de ocupación de sujeto, `sub_type`, está asociada con mayores ingresos en las películas.
+
+
+
+```{r}
+# Carga el paquete mice
+library(mice)
+
+# Imputa biopics con mice usando 5 imputaciones
+biopics_multiimp <- mice(biopics, m = 5, seed = 3108)
+
+# Ajusta una regresion lineal para cada set de datos imputados 
+lm_multiimp <- with(biopics_multiimp, lm(earnings ~ year + sub_type))
+
+# Combina las estimaciones por las reglas de Rubin (pool)
+lm_pooled <- pool(lm_multiimp)
+summary(lm_pooled, conf.int = TRUE, conf.level = 0.95)
+```
+
+En este caso, hemos seguido el flujo "mice-with-pool" para imputar, modelar y agrupar los resultados. Ahora, echemos un vistazo a la salida en la consola: algunos `sub_types` tienen un impacto positivo en las ganancias. Sin embargo, al tener en cuenta la incertidumbre de la imputación con una confianza del 95%, nunca estamos seguros de estos efectos, ya que los límites inferiores son negativos. Con una excepción: para `sub_typeAthlete / military`, tanto los límites inferiores como los superiores son positivos. Lo que podemos decir con seguridad es que las películas sobre atletas militares son populares.
+
+
+#### Selección de modelos por defecto
+
+MICE crea un modelo de imputación separado para cada variable en los datos. El tipo de modelo depende del tipo de variable en cuestión. Una forma popular de especificar los tipos de modelos que queremos usar es establecer un modelo predeterminado para cada uno de los cuatro tipos de variables.
+
+Podemos hacer esto usando el argumento defaultMethod en la función `mice()`, que debe ser un vector de longitud 4 que contenga los métodos de imputación predeterminados para:
+
+Variables continuas,
+Variables binarias,
+Variables categóricas (factores no ordenados),
+Variables factoriales (factores ordenados).
+
+En este caso, aprovecharemos la documentación de `mice` para ver la lista de métodos disponibles y seleccionar los deseados para que el algoritmo los use. 
+
+
+```{r}
+# Imputa biopics usando los metodos especificados en la instruccion
+biopics_multiimp <- mice(biopics, m = 20, 
+                         defaultMethod = c("cart", "lda", "pmm", "polr"))
+
+# Imprime biopics_multiimp
+print(biopics_multiimp)
+```
+
+La capacidad de especificar modelos de imputación puede resultar útil cuando se observa que algunos métodos específicos no funcionan bien. Otro factor que influye en cómo funcionan los métodos de imputación es el conjunto de predictores que utilizan. En el siguiente ejercicio, veremos cómo establecer estos predictores.
+
+
+#### Usando una matriz predictora
+
+Se trata de tomar decisiones importantes cuando se utiliza la imputación basada en modelos, como por ejemplo, qué variables deben incluirse como predictores y en qué modelos. En `mice()`, esto se rige por la matriz de predictores y, por defecto, todas las variables se utilizan para imputar todas las demás.
+
+En caso de tener muchas variables en los datos o poco tiempo para realizar una selección adecuada del modelo, puede utilizar la funcionalidad de `mice` para crear una matriz de predictores basada en las correlaciones entre las variables. Esta matriz se puede incorporar a `mice()`. En este ejercicio, practicaremos exactamente esto: primero construiremos una matriz de predictores de modo que cada variable se imputa utilizando las variables más correlacionadas con ella; luego, usará una matriz de predictores con la función de imputación.
+
+```{r}
+# Crea una matriz predictora con correlacion minima de 0.1
+pred_mat <- quickpred(biopics, mincor = 0.1)
+
+# Imputa biopics con mice
+biopics_multiimp <- mice(biopics, 
+                         m = 10, 
+                         predictorMatrix = pred_mat,
+                         seed = 3108)
+
+# Imprime biopics_multiimp
+# print(biopics_multiimp)
+```
+
+
+### Analizando los patrones de datos faltantes
+
+El primer paso para trabajar con datos incompletos es obtener información sobre los patrones de ausencia de datos, y una buena manera de hacerlo es mediante visualizaciones. Comenzarás tu análisis de los datos de `África` empleando el paquete `VIM` para crear dos visualizaciones: el gráfico de agregación y el gráfico de Mosaico. Te dirán cuántos datos faltan, en qué variables y configuraciones, y si podemos decir algo sobre el mecanismo de ausencia de datos. ¡Comencemos con algunas gráficas!
+
+
+
+```{r}
+africa <- read.csv("handing/africa.csv", sep = ";")
+```
+
+
+```{r}
+# carga el paquete VIM
+library(VIM)
+
+
+
+# Crea un grafico de agregación combinada del set de datos africa
+africa %>%
+  aggr(combined = TRUE, numbers = TRUE)
+```
+
+```{r}
+# Crea un grafico spine plot de pais vs trade
+africa %>% 
+  select(country, trade) %>%
+  spineMiss()
+```
+
+
+Observamos que no hay tantos valores faltantes. Además, observe en el gráfico de Mosaico para los datos de `africa` parecen ser MAR - al menos con respecto al PIB y al país, lo que significa que se pueden imputar.
+
+### Imputando e inspeccionando resultados 
+
+Hemos descubierto que hay algunos datos faltantes en el PIB, `gdp_pc`, y en `trade` como porcentaje del PIB. Además, se sospecha que los datos son MAR, por lo que es posible que sean imputados. En este caso, haremos uso de la imputación múltiple del paquete `mice` para imputar los datos de `africa`. Luego, crearemos un gráfico para ` gdp_pc` vs `trade` para ver si los datos imputados no rompen la relación entre estas variables.
+
+
+```{r}
+# Carga mice
+library(mice)
+
+# Imputa africa con mice
+africa_multiimp <- mice(africa, m = 5, defaultMethod = "cart", seed = 3108)
+
+# Crea un stripplot of gdp_pc versus trade
+stripplot(africa_multiimp, gdp_pc ~ trade | .imp, pch = 20, cex = 1)
+```
+
+Se observa que la imputación funciona bien: hay pequeños grupos en los gráficos de dispersión, que probablemente corresponden a diferentes países. Cada punto de datos imputado encaja en uno de los grupos, en lugar de ser un valor atípico en algún lugar entre los grupos. Después de haber realizado la imputación, podemos proceder con el modelado.
+
+
+#### Inferencia con datos imputados
+
+En este último caso, hemos utilizado `mice` para imputar los datos de `africa`. En este, implementaremos los otros dos pasos del flujo de "mice - with - pool" que hemos usado anteriormente. El modelo de interés es una regresión lineal que explica el PIB, `gdp_pc`, con otras variables. Nos interesa particularmente el coeficiente de libertades civiles, `civlib`. ¿Está asociado tener valores más altos en `civlib` en función a un mayor crecimiento económico una vez que incorporamos la incertidumbre de la imputación?
+
+```{r}
+# Ajusta im regresion lineal a cada data set  imputado
+lm_multiimp <- with(africa_multiimp, lm(gdp_pc ~ country + year + trade + infl + civlib))
+
+# Combina las estimaciones por las reglas de Rubin (pool)
+lm_pooled <- pool(lm_multiimp)
+
+# Summarize pooled results
+summary(lm_pooled, conf.int = TRUE, conf.level = 0.9)
+```
+
+
+Basándose en el resumen de los resultados de la regresión agrupada que acabamos de imprimir. Podemos decir que, dado que los límites inferior y superior tienen signos diferentes, no podemos estar seguros de la dirección del efecto. 
+
+

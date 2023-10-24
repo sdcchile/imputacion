@@ -35,6 +35,7 @@ author:  |
 output:
   bookdown::pdf_document2: default
   pdf_document:
+    extra_dependencies: ["float"]
     toc: no
     toc_depth: 4
     number_sections: true
@@ -45,10 +46,10 @@ nocite: '@*'
 colorlinks: no
 header-includes:
    - \usepackage{eso-pic,graphicx,transparent}
+   - \usepackage{float}
    - \renewcommand{\contentsname}{Índice}
    - \renewcommand{\figurename}{Figura}
    - \renewcommand{\tablename}{Tabla}
-   - \usepackage{eso-pic,graphicx,transparent}
 ---
 
 <!-- 
@@ -66,7 +67,7 @@ header-includes:
 
 \large
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.pos = "H", out.extra = "")
 ```
 ```{r, echo=FALSE}
 rm(list = ls())
@@ -102,24 +103,47 @@ Por otro lado, los registros administrativos, como bases de datos administrativa
 
 En ambos casos, la imputación busca minimizar los sesgos y preservar la integridad de los datos. Se utilizan diversos métodos y enfoques, como la imputación simple, la imputación múltiple y técnicas avanzadas basadas en modelos, para estimar los valores faltantes de manera precisa y robusta.
 
-El el siguiente documento, buscamos realizar un primer diagnostico de como se aborda el problema de los datos faltantes (o perdidos) en nuestro INE. Los abordajes métodologicos los realizaremos tanto con notación matematica, basandonos en el lenguaje de programación @Rsoftware y diversos paquetes disponibles que iremos ilustrando en los diferentes apartados. 
+El el siguiente documento, buscamos realizar un primer diagnostico de como se aborda el problema de los datos faltantes (o perdidos) en nuestro INE. Los abordajes métodologicos los realizaremos tanto con notación matematica, basandonos en el lenguaje de programación @Rsoftware y diversos paquetes disponibles que iremos ilustrando en los diferentes apartados. Adicionalmente, hemos recopilado datos mediante una breve encuesta realizada en la institución, la cual nos ha permitido conocer aspectos relevantes en cuanto al empleo de métodos de imputación.
 
-## Evaluación de usos y constumbres vigentes en la institución
+## Breve cuestionario
 
-Siendo la realidad de nuestro INE la siguiente:
 
-```{r, echo=FALSE}
+Durante el período de septiembre a octubre de 2023, se administró un breve cuestionario con el objetivo de comprender los métodos empleados por los productores estadísticos en la institución y evaluar su nivel de familiaridad con diversas técnicas utilizadas en la producción estadística.
+
+A continuación, presentamos algunos de los resultados obtenidos a través de esta encuesta.
+
+De un total de 21 informantes identificados, 14 de ellos informaron que aplican métodos de imputación en algunos de los productos estadísticos de la institución.
+
+El Departamento de Estadísticas Económicas se destacó al recibir la mayoría de las respuestas, seguido por el Departamento de Estadísticas Sociales y Demográficas en segundo lugar. El método más mencionado con mayor frecuencia fue el de hot-deck, utilizado tanto en los equipos de Estadísticas Económicas como en los de Estadísticas Sociales.
+
+En cuanto a la existencia de documentación relacionada con los métodos de imputación, 8 de los encuestados confirmaron que la tenían, mientras que 6 indicaron que no disponían de documentación asociada. Respecto al software utilizado para implementar estos métodos, R fue la opción más mencionada, seguida por Excel en segundo lugar y STATA en tercera posición.
+
+En relación a los métodos de imputación más populares en nuestra institución, destaca el Hot-deck, luego sigue el Vecino más cercano, que en realidad corresponde a la misma clasificación, pues ambos usan información del mismo set de datos. La tabla siguiente explicita los métodos según su uso.
+
+```{r echo=FALSE}
 library(kableExtra)
 text_tbl<-readxl::read_excel("tablas/tabla_metodos.xlsx")
 kbl(text_tbl, caption = "Tabla resumen de métodos de imputación declarados", booktabs = T) %>%
 kable_styling(latex_options = c("striped", "hold_position")) %>%
-footnote(general = "Esta tabla busca ilustrar la realidad de uso de estos métodos y señalar la frecuencia con que son invocados, marcando la necesidad de documentación oficial, por una parte y por otra, consolidar dichos métodos a nivel institucional.", threeparttable = T,general_title = "Nota: ")
-
+footnote(general = "Esta tabla busca ilustrar la realidad de uso de estos métodos y señalar la frecuencia con que son usados, marcando la necesidad de documentación oficial, por una parte y por otra, consolidar dichos métodos a nivel institucional.", threeparttable = T,general_title = "Nota: ")
 ```
+\newpage
+
+
+Además, es importante destacar que los participantes expresaron la necesidad de contar con instancias más centralizadas para compartir experiencias, métodos y técnicas, así como la creación de repositorios que faciliten la utilización e implementación de talleres.
+
 
 ## Mapa conceptual 
 
-Conociendo nuestra realidad quedamos en posición de poder orientarnos usando como directrices los alcances y logros presentes en el estado del arte de esta importante técnica, que nos permitímos exhibir mediante el siguiente diagrama conceptual, para dar el contexto necesario acerca de que hacemos y la preponderancia de los métodos usados en la institición. 
+Conociendo nuestra realidad quedamos en posición de poder orientarnos usando como directrices los alcances y logros presentes en el estado del arte de esta importante técnica, que nos permitímos exhibir mediante el siguiente diagrama conceptual, para dar el contexto necesario acerca de que hacemos y la preponderancia de los métodos usados en la institución. 
+
+
+![Mapa Conceptual de la Imputación](mapa_conceptual.png)
+
+
+
+
+
 
 
 
@@ -1976,21 +2000,21 @@ La imputación múltiple (MI, por sus siglas en inglés), introducida por @rubin
 
 Esta técnica permite generar valores razonables para datos que faltan, basándose en la distribución de los datos observados. El principio básico es que la imputación debería reflejar la incertidumbre acerca de los valores faltantes, generando varias versiones imputadas diferentes, lo que lleva a la "multiplicidad" en la imputación [@van2018flexible]. Un manejo inadecuado de los datos faltantes en un análisis estadístico puede conducir a estimaciones sesgadas y/o ineficientes de parámetros como las medias o los coeficientes de regresión, y errores estándar sesgados que resultan en intervalos de confianza y pruebas de significancia incorrectas. En todos los análisis estadísticos, se hacen algunas suposiciones sobre los datos faltantes. 
 
-El marco de trabajo de @little2002bayes se utiliza a menudo para clasificar los datos faltantes como: (i) faltantes completamente al azar (MCAR, por sus siglas en inglés - la probabilidad de que los datos falten no depende de los datos observados o no observados), (ii) faltantes al azar (MAR - la probabilidad de que los datos falten no depende de los datos no observados, condicionados a los datos observados) o (iii) faltantes no al azar (MNAR - la probabilidad de que los datos falten sí depende de los datos no observados, condicionados a los datos observados). Por ejemplo, en una encueste de hogares, los datos acerca del ingreso son MAR si es más probable que las personas con mayores años de estudio declaren en dicha variable (y los años de estudio se incluye en el análisis), pero son MNAR si las personas con ingresos altos son más propensas a no declarar sus ingresos en la encuesta que otras personas con iguales años de escolaridad. No es posible distinguir entre MAR y MNAR solo a partir de los datos observados, aunque la suposición de MAR puede hacerse más plausible recolectando más variables explicativas e incluyéndolas en el análisis.
+El marco de trabajo de @little2002bayes se utiliza a menudo para clasificar los datos faltantes como: (i) faltantes completamente al azar (MCAR, por sus siglas en inglés - la probabilidad de que los datos falten no depende de los datos observados o no observados), (ii) faltantes al azar (MAR - la probabilidad de que los datos falten no depende de los datos no observados, condicionados a los datos observados) o (iii) faltantes no al azar (MNAR - la probabilidad de que los datos falten sí depende de los datos no observados, condicionados a los datos observados). Por ejemplo, en una encuesta de hogares, los datos acerca del ingreso son MAR si es más probable que las personas con mayores años de estudio declaren en dicha variable (y los años de estudio se incluye en el análisis), pero son MNAR si las personas con ingresos altos son más propensas a no declarar sus ingresos en la encuesta que otras personas con iguales años de escolaridad. No es posible distinguir entre MAR y MNAR solo a partir de los datos observados, aunque la suposición de MAR puede hacerse más plausible recolectando más variables explicativas e incluyéndolas en el análisis.
 
 Bajo el paradigma de imputación múltiple, la idea es generar múltiples conjuntos de datos donde cada valor faltante para un conjunto de datos $Y_{\text{mis}}$ es reemplazado con un conjunto de valores plausibles, creando así múltiples versiones completas del conjunto de datos. Supongamos se generan $M$ conjuntos de datos posibles, los resultados de estos $M$ análisis se combinan en una única estimación y una única medida de incertidumbre. Este enfoque tiene la ventaja de reflejar adecuadamente la incertidumbre sobre los valores faltantes en las estimaciones finales, lo que puede dar lugar a inferencias más precisas y confiables en presencia de datos faltantes. En este método, la incertidumbre de la imputación se tiene en cuenta mediante la creación de estos múltiples conjuntos de datos. El proceso de imputación múltiple puede dividirse en tres fases:
 
-- Imputación: Durante la fase de imputación, se generan $M$ conjuntos de datos completos, donde M es el número de imputaciones. Cada conjunto de datos se crea reemplazando los valores faltantes con estimaciones basadas en un modelo de imputación. Este modelo se ajusta a los datos observados y también incorpora la variabilidad aleatoria, lo que significa que las imputaciones son diferentes en cada uno de los $M$ conjuntos de datos. Es decir, para un conjunto de datos con valores faltantes, se generan $M$ imputaciones para cada valor faltante. Por lo tanto, a partir de un conjunto de datos original con datos faltantes, generamos $M$ conjuntos de datos completos. Si denotamos la $m$-ésima imputación para el $i$-ésimo valor faltante como $y_{i,m}$, entonces, para cada $i$, generamos $y_{i,1}, y_{i,2}, \ldots, y_{i,M}$.
+- Imputación: Durante la fase de imputación, se generan $M$ conjuntos de datos completos, donde M es el número de imputaciones. Cada conjunto de datos se crea reemplazando los valores faltantes con estimaciones basadas en un modelo de imputación. Este modelo se ajusta a los datos observados y también incorpora la variabilidad aleatoria, lo que significa que las imputaciones son diferentes en cada uno de los $M$ conjuntos de datos. Es decir, para un conjunto de datos con valores faltantes, se generan $M$ imputaciones para cada valor faltante. Por lo tanto, a partir de un conjunto de datos original con datos faltantes, se generan $M$ conjuntos de datos completos. Si se denota la $m$-ésima imputación para el $i$-ésimo valor faltante como $y_{i,m}$, entonces, para cada $i$, se genera $y_{i,1}, y_{i,2}, \ldots, y_{i,M}$.
 
-- Análisis: En la fase de análisis, se lleva a cabo el análisis estadístico de interés en cada uno de los M conjuntos de datos completos como si fueran datos completos sin faltantes.  Cada uno de estos $M$ conjuntos de datos se analiza por separado utilizando el análisis estadístico completo de los datos. Si denotamos el estimador de interés como $\theta$, entonces para cada conjunto de datos completado obtenemos un estimado $\hat{\theta}_m$ para $m = 1, 2, \ldots, M$. Esto resulta en $M$ conjuntos de estimaciones y estadísticas de prueba.
+- Análisis: En la fase de análisis, se lleva a cabo el análisis estadístico de interés en cada uno de los M conjuntos de datos completos como si fueran datos completos sin faltantes.  Cada uno de estos $M$ conjuntos de datos se analiza por separado utilizando el análisis estadístico completo de los datos. Si se denota el estimador de interés como $\theta$, entonces para cada conjunto de datos completado se obtiene un estimado $\hat{\theta}_m$ para $m = 1, 2, \ldots, M$. Esto resulta en $M$ conjuntos de estimaciones y estadísticas de prueba.
 
 - Combinación: En la fase de combinación, las $M$ estimaciones y estadísticas de prueba de los conjuntos de datos imputados se combinan para producir una única estimación y estadística de prueba. La combinación tiene en cuenta tanto la variabilidad dentro de cada conjunto de datos imputados (debido a la variabilidad de muestreo) como la variabilidad entre los conjuntos de datos imputados (debido a la incertidumbre en el proceso de imputación). La estimación final de $\theta$ se calcula como el promedio de las $M$ estimaciones, es decir, $\hat{\theta} = \frac{1}{M}\sum_{m=1}^{M}\hat{\theta}_j$. 
 
-## Implementación general de los métodos de imputación múltiple
+# Implementación general de los métodos de imputación múltiple
 
-Supongamos $\theta$ es una cantidad de interés a calcular de una población estadística, ya sea una media, total poblacional, coeficiente de regresión, etc. Note que $\theta$ es una característica de la población estadística y no depende de características de un determinado diseño. Dado que esta cantidad $\theta$ solo es posible calcularla con la población completa, se suele calcular un estimador $\hat{\theta}$ del parámetro poblacional. 
+Si $\theta$ es una cantidad de interés a calcular de una población estadística, ya sea una media, total poblacional, coeficiente de regresión, etc. Notar que $\theta$ es una característica de la población estadística y no depende de características de un determinado diseño. Dado que esta cantidad $\theta$ solo es posible calcularla con la población completa, se suele calcular un estimador $\hat{\theta}$ del parámetro poblacional. 
 
-El objetivo es encontrar un estimador insesgado de $\theta$ tal que la esperanza de $\hat{\theta}$ sobre todas las muestras posibles de los datos completos $Y$ sea igual al parámetro poblacional deseado, es decir, se busca que $E(\hat{\theta}|Y) = \theta$. Note que la incertidumbre acerca de la estimación $\hat{\theta}$ depende acerca del conocimiento que se tiene acerca del vector $Y_{\text{mis}}$. En ese sentido, si fuese posible generar valores para $Y_{\text{mis}}$ de manera exacta, entonces la incertidumbre acerca de la estimación $\hat{\theta}$ se reduciría o bien no existiría incertidumbre acerca de la estimación generada para el parámetro poblacional.  
+El objetivo es encontrar un estimador insesgado de $\theta$ tal que la esperanza de $\hat{\theta}$ sobre todas las muestras posibles de los datos completos $Y$ sea igual al parámetro poblacional deseado, es decir, se busca que $E(\hat{\theta}|Y) = \theta$. La incertidumbre acerca de la estimación $\hat{\theta}$ depende acerca del conocimiento que se tiene acerca del vector $Y_{\text{mis}}$. En ese sentido, si fuese posible generar valores para $Y_{\text{mis}}$ de manera exacta, entonces la incertidumbre acerca de la estimación $\hat{\theta}$ se reduciría o bien no existiría incertidumbre acerca de la estimación generada para el parámetro poblacional.  
 
 Sea $P(\theta|Y_\text{obs})$ la distribución a posteriori de $\theta$, esta distribución puede ser descompuesta integrando sobre la distribución conjunta del vector $\left(Y_\text{obs}, Y_\text{mis}\right)$, es decir:
 
@@ -2001,9 +2025,9 @@ P(\theta|Y_{\text{obs}}) &= \int P(\theta, Y_{\text{mis}}|Y_{\text{obs}}) dY_{\t
 &\approx \frac{1}{M} \sum_{m=1}^{M} P(\theta|Y_{\text{obs}}, Y^{(m)}_{\text{mis}}) 
 \end{align}
 
-Donde $M > 1$ y $Y^{(m)}_\text{miss}$ es obtenida como una realización de la distribución de  $P(Y_{\text{mis}}|Y_{\text{obs}})$ para $m = 1,...,M$.
+Donde $M > 1$ y $Y^{(m)}_\text{mis}$ es obtenida como una realización de la distribución de  $P(Y_{\text{mis}}|Y_{\text{obs}})$ para $m = 1,...,M$.
 
-Dado que se desea hacer inferencia sobre el parámetro $\theta$ es de interés conocer la distribución de $P(\theta|Y_\text{obs})$ pues utiliza la información que se tiene, por otra parte $P(\theta|Y_\text{obs},Y_\text{mis})$ es la distribución hipotética del parámetro sobre los datos completos y $P(Y_\text{mis}|Y_\text{obs})$ es la distribución de los valores perdidos dados los valores observados.
+Dado que se desea hacer inferencia sobre el parámetro $\theta$, es de interés conocer la distribución de $P(\theta|Y_\text{obs})$ pues utiliza la información que se tiene, por otra parte $P(\theta|Y_\text{obs},Y_\text{mis})$ es la distribución hipotética del parámetro sobre los datos completos y $P(Y_\text{mis}|Y_\text{obs})$ es la distribución de los valores perdidos dados los valores observados.
 
 De la ecuación \@ref(eq:fm1), seria posible obtener $M$ imputaciones $\dot{Y}_\text{mis}$ a partir de la distribución $P(Y_\text{mis}|Y_\text{obs})$, con ello, se podria calcular la cantidad $\theta$ a partir de la distribución de $P(\theta|Y_\text{obs},\dot{Y}_\text{mis})$. @van2018flexible muestran que la media posteriori de $P(\theta|Y_\text{obs})$ es igual a 
 
@@ -2017,21 +2041,23 @@ Suponga que $\hat{\theta}_m$ es la estimación usando la $m$-ésima imputación,
 \begin{equation}
 \bar{\theta} = \frac{1}{M}\sum_{m = 1}^M \hat{\theta}_m (\#eq:fm3)
 \end{equation}
+
 En un caso multivariado, es posible que $\bar{\theta}_m$ contenga $k$ parámetros y por tanto sea un vector de dimensión $k\times 1$.
 La varianza de la distribución a posteriori $P(\theta|Y_\text{obs})$ se puede escribir como la suma de dos componentes, esto es:
 
 \begin{equation} 
 V(\theta|Y_\text{obs}) = E(V(\theta|Y_\text{obs},Y_\text{mis})|Y_\text{obs}) + V(E(\theta|Y_\text{obs},Y_\text{mis})|Y_\text{obs}) (\#eq:fm4)
 \end{equation}
+
 La primera componente de \@ref(eq:fm4) puede interpretarse como la media de las repetidas imputaciones a posteriori de la varianza de $\theta$ (La cuál será denominada como intra-varianza) mientras que la segunda componente es la varianza entre las medias de $\theta$ estimadas con la distribución a posteriori (la cuál será llamada entre-varianza). 
 
-Si denotamos $\bar{U}_\infty$ y $B_\infty$ como la intra y entre varianzas cuando $M \to \infty$ entonces se tiene que $T_\infty = \bar{U}_\infty + B_\infty$ corresponde a la varianza posteriori de $\theta$. Cuando $M$ es finito, podemos calcular la media de las varianzas de las imputaciones como
+Si se denota $\bar{U}_\infty$ y $B_\infty$ como la intra y entre varianzas cuando $M \to \infty$ entonces se tiene que $T_\infty = \bar{U}_\infty + B_\infty$ corresponde a la varianza posteriori de $\theta$. Cuando $M$ es finito, es posible calcular la media de las varianzas de las imputaciones como
 
 \begin{equation}
 \bar{U} = \frac{1}{M}\sum_{m = 1}^{M}\bar{U}_m (\#eq:fm5)
 \end{equation}
 
-donde $\bar{U}_m$ corresponde a la matriz de varianzas covarianzas de $\hat{\theta}_m$ obtenida de la $m$-ésima imputación. La estimación insesgada de las varianzas entre las $M$ estimaciones realizadas está dadada por
+donde $\bar{U}_m$ corresponde a la matriz de varianzas covarianzas de $\hat{\theta}_m$ obtenida de la $m$-ésima imputación. La estimación insesgada de las varianzas entre las $M$ estimaciones realizadas está dada por
 
 \begin{equation}
 B = \frac{1}{M-1}\sum_{m = 1}^M(\hat{\theta}_m-\bar{\theta})(\hat{\theta}_m-\bar{\theta})' (\#eq:fm6)
@@ -2044,9 +2070,9 @@ T &= \bar{U} + B + \frac{B}{M} \\
 & = \bar{U} + \left(1 + \frac{1}{M}\right)B
 \end{align*}
 
-@steele2010inference investigaron alternativas para obtener estimaciones de $T$ utilizando mezclas de distribuciones normales. En este escenario, cuando existe normalidad multivariante y $M$ no es grande, estos métodos producen estimaciones ligeramente más eficientes de T.
+@steele2010inference investigaron alternativas para obtener estimaciones de $T$ utilizando mezclas de distribuciones normales. En este escenario, cuando existe normalidad multivariante y $M$ no es grande, estos métodos producen estimaciones ligeramente más eficientes de T acorde a los autores.
 
-### Consideraciones técnicas en la aplicación de los métodos de imputación
+## Consideraciones técnicas en la aplicación de los métodos de imputación
 
 Considerando que es necesario realizar inferencia sobre la estimación puntual $\bar{\theta}$ y la varianza estimada definida como $T$, diversos autores [@rubin1988overview; @van2018flexible; @molenberghs2014handbook] proponen utilizar la distribución $t$. 
 
@@ -2056,14 +2082,14 @@ Considerando que es necesario realizar inferencia sobre la estimación puntual $
 \frac{\theta-\bar{\theta}}{\sqrt{T}} \sim t_\nu 
 \end{equation}
 
-donde $t_\nu$ es una distribución t-student con $\nu$ grados de libertad. Con lo anterior podemos por tanto construir un intervalo de $(1-\alpha)100\%$ para $\bar{\theta}$ definido en la siguiente ecuación
+donde $t_\nu$ es una distribución t-student con $\nu$ grados de libertad. Con lo anterior es posible construir un intervalo de $(1-\alpha)100\%$ para $\bar{\theta}$ definido en la siguiente ecuación
 
 \begin{equation}
 \bar{\theta} \pm t_{\nu,1-\alpha/2} \sqrt{T}
 \end{equation}
 
 donde $t_{\nu,1-\alpha/2}$ corresponde al cuantil de probabilidad $1-\alpha/2$ de $t_\nu$. 
-Supongamos se desea testear la hipotesis nula $\theta = \theta_0$ para un valor en específico de $\theta_0$. El valor-p del test se puede calcular como
+Suponga se desea testear la hipotesis nula $\theta = \theta_0$ para un valor en específico de $\theta_0$. El valor-p del test se puede calcular como
 
 \begin{equation}
 P_s = \text{Pr} \left[ F_{1,\nu} > \frac{(\theta_0-\bar{\theta})^2}{T} \right]
@@ -2085,7 +2111,7 @@ La ecuacion anterior puede ser reescrita como
 
 donde $r_M = \frac{(1+m^{-1})B}{\bar{U}}$ es conocida como el incremento de varianza relativa (RVI por sus siglas en inglés) debido a los valores faltantes, considerando que $\bar{U}$ representa la varianza de la estimación $\bar{\theta}$ cuando no existe variación entre los valores estimados $\hat{\theta}_m$, en cuyo caso $B = 0$.
 
-Por otra parte, para $\theta$ podemos definir el ratio
+Por otra parte, para $\theta$ se puede definir el ratio
 
 \begin{equation}
 \lambda_M = \frac{(1+m^{-1})B}{T} (\#eq:fm9)
@@ -2109,7 +2135,7 @@ Es fácil ver que $\gamma_M \to r_M/(1 + r_M) = \lambda_M$ cuando $M \to \infty$
 \nu_{obs} = \frac{\nu_{com} + 1}{\nu_{com} + 3}\nu_{com}(1-\lambda)
 \end{equation}
 
-Los grados de libertad ajustados que se utilizarán para las pruebas en imputación múltiplese puede escribir de manera concisa como 
+Los grados de libertad ajustados que se utilizarán para las pruebas en imputación múltiple se pueden escribir de manera concisa como 
 
 \begin{equation}
 \nu = \frac{\nu_{old}\nu_{obs}}{\nu_{old} + \nu_{obs}} (\#eq:fm10p2)
@@ -2117,7 +2143,7 @@ Los grados de libertad ajustados que se utilizarán para las pruebas en imputaci
 
 @van2018flexible señala que para la cantidad de la ecuación \@ref(eq:fm10p2) siempre se tiene que $\nu \leq \nu_{com}$. Si $\nu_{com} = \infty$ entonces \@ref(eq:fm10p2) se reduce a \@ref(eq:fm8).
 
-### Número de imputaciones a realizar
+## Número de imputaciones a realizar
 
 La imputación múltiple es una técnica de simulación por lo que $\bar{\theta}$ y su varianza total estimada $T$ están sujetas a errores de simulación. En ese sentido, la fórmula dada por
 
@@ -2127,21 +2153,42 @@ T_m = \left( 1 + \frac{\gamma_0}{m}\right)T_\infty (\#eq:fm11)
 
 es la relación entre la varianza del parámetro estimado en un escenario con un número finito de imputaciones ($T_m$) y la varianza del parámetro estimado en un escenario con un número infinito de imputaciones ($T_\infty$).
 
-Aquí, $m$ representa el número de imputaciones múltiples y $\gamma_0$ es la fracción de información perdida. Esta cantidad es equivalente a la proporción esperada de observaciones que faltan en el caso de que $Y$ sea una variable que no tenga covariab-les asociadas. Sin embargo, esta proporción suele ser menor si existen covariables que pueden predecir el valor de $Y$. Cuando $m$ tiende a infinito, la varianza del estimador tiende a $T_\infty$, es decir, se reduce la varianza debido al error de simulación. Sin embargo, en la práctica, rara vez se alcanza el límite de $m = \infty$ y se usa un número finito de imputaciones.
+Aquí, $m$ representa el número de imputaciones múltiples y $\gamma_0$ es la fracción de información perdida. Esta cantidad es equivalente a la proporción esperada de observaciones que faltan en el caso de que $Y$ sea una variable que no tenga covariables asociadas. Sin embargo, esta proporción suele ser menor si existen covariables que pueden predecir el valor de $Y$. Cuando $m$ tiende a infinito, la varianza del estimador tiende a $T_\infty$, es decir, se reduce la varianza debido al error de simulación. Sin embargo, en la práctica, rara vez se alcanza el límite de $m = \infty$ utilizando en su lugar un número finito de imputaciones.
 
 La cercanía de $T_m$ a $T_\infty$ es una medida de qué tan bien se ha estimado la varianza del parámetro. En teoría, cuanto mayor sea $m$, más cercano será $T_m$ a $T_\infty$, lo que significa que la varianza estimada es más precisa. Sin embargo, aumentar el número de imputaciones también aumenta la carga computacional, por lo que se debe encontrar un equilibrio. Según @bodner2008improves, en la mayoría de los escenarios prácticos, se pueden obtener buenos resultados con solo 20-40 imputaciones múltiples.
 
 El intervalo de confianza para la estimación depende tanto de $\nu$ como de $m$. @royston2004multiple sugiere un criterio para determinar $m$ basado en el coeficiente de confianza $t_\nu\sqrt{T}$, y propone que el coeficiente de variación de $\log{(t_\nu\sqrt{T})}$ debería ser inferior a $0.05$. Este criterio tiene el efecto de reducir el intervalo de confianza en un $10\%$, lo que implica que se necesitarían al menos $m > 20$ imputaciones.
 
-En su estudio, @bodner2008improves examinó la variabilidad de tres medidas específicas con diferentes números de imputaciones múltiples ($m$): el ancho del intervalo de confianza del 95%, el valor p y $\gamma_0$ (la proporción real de información perdida). En este contexto, Bodner estableció un criterio para selecci## Algoritmo Data Augmentation (DA)
+En su estudio, @bodner2008improves examinó la variabilidad de tres medidas específicas con diferentes números de imputaciones múltiples ($m$): el ancho del intervalo de confianza del 95%, el valor p y $\gamma_0$ (la proporción real de información perdida). En este contexto, Bodner estableció un criterio para seleccionar $m$ tal que el ancho de un intervalo de confianza del $95\%$ no supere el $10\%$ de su valor verdadero. Para $\gamma_0 = (0.05,0.1,0.2,0.3,0.5,0.7,0.9)$ recomendó valores $m = (3,6,12,24,59,114,258)$.
 
-El algoritmo DA considera la distribución posteriori conjunta de $\theta$ y $Y_{\text{mis}}$ condicional en $Y_{\text{obs}}$, $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$, y obtiene muestras de forma iterativa (Tanner y Wong, 1987). Note que 
+
+## Algoritmo de imputación bayesiana
+
+Sea $\theta$ el parámetro del modelo de datos completos $f(Y|\theta)$. Desde una perspectiva bayesiana, se necesita una distribución a priori para $\theta$, $\pi(\theta)$, para completar la especificación del modelo. Formular directamente $f(Y_{\text{mis}}|Y_{\text{obs}})$ puede ser complejo acorde a @he2012multiple pues $\theta$ no está incluido en la distribución predictiva posteriori. Sin embargo, el algoritmo de imputación tiene que involucrar a $\theta$ de ciertas maneras. Note que
+
+\begin{equation}
+f(Y_{\text{mis}}|Y_{\text{obs}}) = \int f(Y_{\text{mis}}, \theta|Y_{\text{obs}})d\theta = \int f(Y_{\text{mis}}|Y_{\text{obs}}, \theta)f(\theta|Y_{\text{obs}})d\theta.
+\end{equation}
+
+La ecuación anterior sugiere que, condicionalmente a una extracción de $\theta$, $Y_{\text{mis}}$ puede extraerse de $f(Y_{\text{mis}}|Y_{\text{obs}}, \theta)$. Esta estrategia puede esbozarse de manera algorítmica. En @he2012multiple esbosan el algoritmo de imputación bayesiana directa (DB) de la siguiente manera:
+\begin{enumerate}
+\item Derivar la distribución posterior de datos observados, $f(\theta|Y_{\text{obs}})$, bajo una distribución a priori $\pi(\theta)$.
+\item Extraer un valor del parámetro $\theta^{(m)}$ de $f(\theta|Y_{\text{obs}})$.
+\item Extrer valores de datos faltantes de la distribución condicional: $Y^{(m)}_{\text{mis}} \sim f(Y_{\text{mis}}|Y_{\text{obs}}, \theta^{(m)})$.
+\item Repetir 2 y 3 independientemente $M$ veces para crear conjuntos de datos completos múltiples $(Y^{(m)}_{\text{mis}}, Y_{\text{obs}})$ $(m = 1, \ldots, M)$.
+\end{enumerate}
+
+Dado que derivar $f(\theta|Y_{\text{obs}})$ y extraer parámetros de ella puede ser difícil si el patrón de datos faltantes no es simple o el modelo de datos completos es complicado, es posible en su lugar emplear un algoritmo de imputación bayesiana más general llamada algoritmo de datos aumentados (DA por sus siglas en inglés).
+
+### Algoritmo de datos aumentados
+
+El algoritmo datos aumentados (DA) considera la distribución posteriori conjunta de $\theta$ y $Y_{\text{mis}}$ condicional en $Y_{\text{obs}}$, $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$, y obtiene muestras de forma iterativa [@tanner1987calculation]. Notar que 
 
 \begin{equation}
 P(\theta, Y_{\text{mis}} | Y_{\text{obs}}) = P(\theta | Y_{\text{mis}}, Y_{\text{obs}}) P(Y_{\text{mis}} | Y_{\text{obs}}) = P(Y_{\text{mis}} | \theta, Y_{\text{obs}}) P(\theta | Y_{\text{obs}})
 \end{equation}
 
-En segundo lugar si consideramos $Y_{\text{mis}}$ también como un "parámetro", podemos extraer $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$ iterando entre el muestreo de $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ mediante gibss sampling. Estas muestras constituyen iteraciones de cadenas de Markov Monte Carlo (MCMC). Cuando las muestras de ambos $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ convergen, también obtenemos muestras de $Y_{\text{mis}}$ que convergen a la distribución predictiva posterior, $P(Y_{\text{mis}} | Y_{\text{obs}})$, creando así múltiples imputaciones [@he2021multiple].
+En segundo lugar si se considera $Y_{\text{mis}}$ también como un "parámetro", es posible extraer $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$ iterando entre el muestreo de $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ mediante gibss sampling. Estas muestras constituyen iteraciones de cadenas de Markov Monte Carlo (MCMC). Cuando las muestras de ambos $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ convergen, también se obtienen muestras de $Y_{\text{mis}}$ que convergen a la distribución predictiva posteriori, $P(Y_{\text{mis}} | Y_{\text{obs}})$, creando así múltiples imputaciones [@he2021multiple].
 
 La estrategia DA se puede esbozar de forma algorítmica de la siguiente manera:
 
@@ -2161,9 +2208,9 @@ La estrategia DA se puede esbozar de forma algorítmica de la siguiente manera:
 
 \end{enumerate}
 
-Una ventaja del algoritmo DA sobre el algoritmo DB es que trabajar en $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ suele ser más fácil que $P(\theta | Y_{\text{obs}})$ porque el primero es condicional en datos completos y no está limitado por el patrón de datos faltantes. Tenga en cuenta que, a diferencia del algoritmo DB, el algoritmo DA requiere iteraciones entre el paso I y el paso P. Cuando $\theta$ contiene múltiples componentes, el paso P del algoritmo DA puede constar de múltiples pasos, extrayendo cada parámetro condicional en otros parámetros y valores faltantes como en el Gibss sampling [@he2021multiple].
+Una ventaja del algoritmo DA sobre el algoritmo DB es que trabajar en $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ suele ser más fácil que $P(\theta | Y_{\text{obs}})$ porque el primero es condicional en datos completos y no está limitado por el patrón de datos faltantes. Se debe tener en cuenta que, a diferencia del algoritmo DB, el algoritmo DA requiere iteraciones entre el paso I y el paso P. Cuando $\theta$ contiene múltiples componentes, el paso P del algoritmo DA puede constar de múltiples pasos, extrayendo cada parámetro condicional en otros parámetros y valores faltantes como en el Gibss sampling [@he2021multiple].
 
-### Imputación basada en Regresión lineal con Data Augmentation
+## Imputación basada en Regresión lineal con Data Augmentation
 
 La regresión lineal es frecuentemente el modelo preferido para la imputación de variables continuas que siguen una distribución normal.
 
@@ -2203,9 +2250,9 @@ y_i^* = \boldsymbol{\beta}\mathbf{x}_i + u_{2i}\sigma^* (\#eq:fm15)
 
 donde $u_{2i}$ es una realización aleatoria proveniente de una distribución normal estándar.
 
-### Imputación multivariada para datos continuos
+## Imputación multivariada para datos continuos
 
-#### Modelos multivariados utilizando la distribución normal
+### Modelos multivariados utilizando la distribución normal
 
 Si se asume que $Y = (Y_1, Y_2)$ sigue una distribución normal bivariada. La distribución condicional de $Y_i$ dado $Y_j$ (donde $i, j \in \{1, 2\}$ y $j \neq i$) es un modelo de regresión lineal normal univariado:
 
@@ -2229,35 +2276,34 @@ Suponga que $\mu = (\mu_1, \mu_2)^t$, \(\Sigma = \begin{pmatrix}
 
 Después de imponer una distribución a priori plana para $\theta$ tal como $\pi(\mu, \Sigma) \propto |\Sigma|^{-1}$, los componentes principales del algoritmo de imputación pueden esbozarse de la siguiente manera:
 
-\begin{enumerate}
-\item Comenzar con una estimación o suposición del parámetro $\theta$, digamos $\theta^*(t)$ (donde $t = 0$ en la 1ra iteración). Reparametrizar $\theta^*(t)$ a $\beta^*(t)$'s y $\tau^{2*}(t)$'s usando la fórmula anterior.
 
-\item Paso-I: para los casos faltantes en $Y_1$ donde sus valores se observan en $Y_2$, imputarlos usando el Modelo \@ref(eq:fmnmv1) con los parámetros extraídos (es decir, $\beta^*(t)_{01}, \beta^*(t)_{11}, \tau^{2*}(t)_1$) del Paso 1; imputar los casos faltantes en $Y_2$ de manera similar usando el Modelo \@ref(eq:fmnmv2); si ambas variables faltan, pueden generarse a partir de $\mathcal{N}_2(\mu^*(t), \Sigma^*(t))$.
+1. Comenzar con una estimación o suposición del parámetro $\theta$, digamos $\theta^*(t)$ (donde $t = 0$ en la 1ra iteración). Reparametrizar $\theta^*(t)$ a $\beta^*(t)$'s y $\tau^{2*}(t)$'s usando la fórmula anterior.
 
-\item Paso-P: una vez que $Y_1$ y $Y_2$ se completan a partir del Paso 2, extraer $\mu^*(t+1)$ y $\Sigma^*(t+1)$ como: $\frac{\Sigma^*(t+1)}{(n - 1)} \sim \text{Inverse-Wishart}(S(t+1), n - 1)$, y $\mu^*(t+1) \sim \mathcal{N}_2(Y^{(t+1)}, \frac{\Sigma^*(t+1)}{n})$, donde $Y^{(t+1)}$ y $S(t+1)$ son la media muestral y la matriz de covarianza a partir de los datos completados $Y^{(t+1)}$, respectivamente; transformar $\theta^*(t+1)$ a $\beta^*(t+1)$'s y $\tau^{2*}(t+1)$'s.
+2. Paso-I: para los casos faltantes en $Y_1$ donde sus valores se observan en $Y_2$, imputarlos usando el modelo \@ref(eq:fmnmv1) con los parámetros extraídos (es decir, $\beta^*(t)_{01}, \beta^*(t)_{11}, \tau^{2*}(t)_1$) del Paso 1; imputar los casos faltantes en $Y_2$ de manera similar usando el modelo \@ref(eq:fmnmv2); si ambas variables faltan, pueden generarse a partir de $\mathcal{N}_2(\mu^*(t), \Sigma^*(t))$.
 
-\item Repetir los Pasos 2 y 3 hasta que la convergencia para $(\theta^*(t), Y^*(t)_{\text{mis}})$ se satisfaga, digamos en $t = T$. Las extracciones de $Y^*(T)_{\text{mis}}$ constituyen el primer ( $m = 1$ ) conjunto de imputaciones, $Y^{(m)}_{\text{mis}}$.
+3. Paso-P: una vez que $Y_1$ y $Y_2$ se completan a partir del Paso 2, extraer $\mu^*(t+1)$ y $\Sigma^*(t+1)$ como: $\frac{\Sigma^*(t+1)}{(n - 1)} \sim \text{Inverse-Wishart}(S(t+1), n - 1)$, y $\mu^*(t+1) \sim \mathcal{N}_2(Y^{(t+1)}, \frac{\Sigma^*(t+1)}{n})$, donde $Y^{(t+1)}$ y $S(t+1)$ son la media muestral y la matriz de covarianza a partir de los datos completados $Y^{(t+1)}$, respectivamente; transformar $\theta^*(t+1)$ a $\beta^*(t+1)$'s y $\tau^{2*}(t+1)$'s.
 
-\item Repetir los Pasos 1 a 4 de forma independiente $M$ veces.
-\end{enumerate}
+4. Repetir los Pasos 2 y 3 hasta que la convergencia para $(\theta^*(t), Y^*(t)_{\text{mis}})$ se satisfaga en $t = T$. Las extracciones de $Y^*(T)_{\text{mis}}$ constituyen el primer ( $m = 1$ ) conjunto de imputaciones, $Y^{(m)}_{\text{mis}}$.
 
-bajo un modelo normal bivariado se puede generalizar lo anterior a un modelo normal multivariado con $p$-dimensiones. Primero note que si dividimos $Y$ de $p$-variado en dos partes, $Y_1$ y $Y_2$, con dimensiones $p_1$ y $p_2$ donde $p = p_1 + p_2$, entonces \(Y = (Y_1, Y_2)^t \sim \mathcal{N}((\mu_1, \mu_2)^t,
+5. Repetir los Pasos 1 a 4 de forma independiente $M$ veces.
+
+bajo un modelo normal bivariado se puede generalizar lo anterior a un modelo normal multivariado con $p$-dimensiones. Primero notar que si se divide la variable $Y$ $p$-variada en dos partes, $Y_1$ y $Y_2$, con dimensiones $p_1$ y $p_2$ donde $p = p_1 + p_2$, entonces \(Y = (Y_1, Y_2)^t \sim \mathcal{N}((\mu_1, \mu_2)^t,
 \begin{pmatrix}
 \Sigma_{11} & \Sigma_{12} \\
 \Sigma_{21} & \Sigma_{22}
 \end{pmatrix}
 ) \), donde $\mu_1$ y $\mu_2$ son vectores de $p_1 \times 1$ y $p_2 \times 1$, respectivamente, y $\Sigma_{ij}$ son matrices de covarianza con dimensiones $p_i \times p_j$ para $i, j = 1, 2$. La distribución condicional de $Y_2$ dado $Y_1$ es una distribución normal $p_2$-variada: $f(Y_2|Y_1) \sim \mathcal{N}(\mu_{2|1}, \Sigma_{2|1})$, donde $\mu_{2|1} = \mu_2 + \Sigma_{21}\Sigma^{-1}_{11} (Y_1 - \mu_1)$ es la media predicha a partir de la regresión lineal $p_2$-variada de $Y_2$ en $Y_1$, y $\Sigma_{2|1} = \Sigma_{22} - \Sigma_{21}\Sigma^{-1}_{11}\Sigma_{12}$ es la matriz de covarianza residual de esa regresión.
 
-Para llevar a cabo JM para más de dos variables, necesitamos dividir a los sujetos en grupos según qué variables tienen valores faltantes. Luego, para el grupo con $Y_2$-variables faltantes y $Y_1$-variables observadas, sus imputaciones pueden generarse usando el modelo de regresión lineal multivariado caracterizado por $f(Y_2|Y_1) $ como se describió anteriormente. El Paso-I del algoritmo DA pasa por todos estos grupos y luego es seguido por el Paso-P.
+Para llevar a cabo JM para más de dos variables, es necesario dividir a los sujetos en grupos según qué variables tienen valores faltantes. Luego, para el grupo con $Y_2$-variables faltantes y $Y_1$-variables observadas, sus imputaciones pueden generarse usando el modelo de regresión lineal multivariado caracterizado por $f(Y_2|Y_1)$ como se describió anteriormente. El Paso-I del algoritmo DA pasa por todos estos grupos y luego es seguido por el Paso-P.
 
 
-#### Modelos multivariados para datos no normales y mezcla de distribuciones
+### Modelos multivariados para datos no normales y mezcla de distribuciones
 
 Para variables continuas multivariadas que muestran una fuerte asimetría y/o colas pesadas, una estrategia JM conveniente es aplicar algunas transformaciones para hacer que las suposiciones de normalidad sean más plausibles y luego llevar a cabo la imputación del modelo normal multivariado en la escala transformada.
 
 Otra estrategia efectiva para datos continuos no normales es utilizar modelos de mezcla. Los modelos de mezcla permiten un modelado conjunto flexible, ya que pueden reflejar automáticamente estructuras distribucionales y de dependencia complejas. Las mezclas finitas de distribuciones normales [mclachlan2000finite] son una herramienta poderosa para el modelado estadístico en una amplia variedad de situaciones. @fraley2002model y @marron1992exact mostraron que muchas distribuciones de probabilidad pueden ser bien aproximadas por modelos de mezcla finita. Por otra parte, @priebe1994adaptive mostró que con 10,000 observaciones, una densidad lognormal puede ser bien aproximada por una mezcla de 30 componentes normales.
 
-Para esbozar la idea, sea $Y = (Y_1, \ldots, Y_n)$ que comprende $n$ observaciones completas, donde cada $Y_i$ es un vector $p$-dimensional. Supongamos que cada individuo pertenece exactamente a uno de los $K$ componentes de mezcla latentes (grupos o clases). Para $i = 1, \ldots, n$, sea $Z_i \in \{1, \ldots, K\}$ que indica el componente del individuo $i$, y sea $\pi_k = \Pr(Z_i = k)$. Supongamos que $\pi = (\pi_1, \ldots, \pi_K)$ es el mismo para todos los individuos. Dentro de cualquier componente $k$, supongamos que las $p$ variables siguen una distribución normal multivariada específica del componente con media $\mu_k$ y varianza $\Sigma_k$. Sea $\theta = (\mu, \Sigma, \pi)$, donde $\mu = (\mu_1, \ldots, \mu_K)$ y $\Sigma = (\Sigma_1, \ldots, \Sigma_K)$. El modelo de mezcla finita se puede expresar como
+Para esbozar la idea, sea $Y = (Y_1, \ldots, Y_n)$ que comprende $n$ observaciones completas, donde cada $Y_i$ es un vector $p$-dimensional. Suponga que cada individuo pertenece exactamente a uno de los $K$ componentes de mezcla latentes (grupos o clases). Para $i = 1, \ldots, n$, sea $Z_i \in \{1, \ldots, K\}$ que indica el componente del individuo $i$, y sea $\pi_k = \Pr(Z_i = k)$. Supongamos que $\pi = (\pi_1, \ldots, \pi_K)$ es el mismo para todos los individuos. Dentro de cualquier componente $k$, supongamos que las $p$ variables siguen una distribución normal multivariada específica del componente con media $\mu_k$ y varianza $\Sigma_k$. Sea $\theta = (\mu, \Sigma, \pi)$, donde $\mu = (\mu_1, \ldots, \mu_K)$ y $\Sigma = (\Sigma_1, \ldots, \Sigma_K)$. El modelo de mezcla finita se puede expresar como
 
 \begin{equation}
 Y_i|Z_i, \mu, \Sigma \sim \mathcal{N}(\mu_{Z_i}, \Sigma_{Z_i}), (\#eq:mnn1)
@@ -2272,18 +2318,18 @@ Al marginalizar sobre $Z_i$'s, este modelo de mezcla es equivalente a
 f(Y_i|\theta) = \sum_{k=1}^{K} \pi_k \mathcal{N}(\mu_k, \Sigma_k). (\#eq:mnn3)
 \end{equation}
 
-Para completar una especificación bayesiana del modelo, se pueden imponer distribuciones previas comunes para $\theta$. Por ejemplo, podemos especificar $\pi(\mu_k|\Sigma_k) \sim \mathcal{N}(\mu_0, \tau^{-1}\Sigma_k)$ y $\pi(\Sigma_k) \sim \text{Inverse-Wishart}(m, \Lambda)$ ($k = 1, \ldots K$) para una media vectorial previa $\mu_0$, un parámetro de precisión previo escalar $\tau$, y grados de libertad previos $m$ para la matriz de covarianza previa $\Lambda$ [@gelman2013bayesian]. Consideremos además, $\pi(\pi_1, \ldots, \pi_K) \sim \text{Dirichlet}(1, \ldots, 1)$, la distribución de Dirichlet.
+Para completar una especificación bayesiana del modelo, se pueden imponer distribuciones previas comunes para $\theta$. Por ejemplo, se puede especificar $\pi(\mu_k|\Sigma_k) \sim \mathcal{N}(\mu_0, \tau^{-1}\Sigma_k)$ y $\pi(\Sigma_k) \sim \text{Inverse-Wishart}(m, \Lambda)$ ($k = 1, \ldots K$) para una media vectorial previa $\mu_0$, un parámetro de precisión previo escalar $\tau$, y grados de libertad previos $m$ para la matriz de covarianza previa $\Lambda$ [@gelman2013bayesian]. Considere además, $\pi(\pi_1, \ldots, \pi_K) \sim \text{Dirichlet}(1, \ldots, 1)$, la distribución de Dirichlet.
 
 Como una mezcla de distribuciones normales multivariadas, el modelo es lo suficientemente flexible como para capturar características distribucionales como asimetría y relaciones no lineales que una sola distribución normal multivariada no lograría codificar. Por ejemplo, cuando $K = 1$, el modelo de mezcla normal es el modelo normal típico. Al establecer $K = 2$ y $\mu_1 = \mu_2$ en los modelos \@ref(eq:mnn1) y \@ref(eq:mnn2), los datos con valores atípicos pueden considerarse como surgidos de dos clases: una contiene la mayoría de los valores normales y la otra comprende valores extremos/atípicos que tienen varianzas infladas. Esto también se conoce como el modelo normal contaminado en [@little_rubin_2020, capitulo 12]. Además, aunque $K$ a menudo se fija y se establece previamente, puede tratarse como desconocidos y obtenerse de manera impulsada por los datos mediante métodos bayesianos avanzados. Esta opción amplía aún más la flexibilidad y utilidad de los modelos de mezcla normal, especialmente para datos de alta dimensión [@he2021multiple].
 
 Es importante resaltar que los indicadores de agrupación $Z_i$'s no se observan y son probabilísticos. Esta característica hace que el ajuste del modelo y la imputación sean bastante complicados. A menudo se requieren rutinas de código o computacionales específicas. Las aplicaciones de modelos de mezcla normal para imputaciones de datos faltantes se pueden encontrar, por ejemplo, en @elliott2007using, @Boehning2007 y @kim2014multiple.
 
-En el mismo espíritu que los modelos de mezcla normal, otra estrategia JM para datos no normales es imponer modelos que puedan acomodar características no normales de los datos utilizando parámetros adicionales (es decir, además de $\mu$ y $\Sigma$) e incluir modelos normales como casos especiales. Por ejemplo, @liu1995missing desarrolló modelos de imputación que asumen una familia $t$-multivariada. Es bien sabido que en la familia $t$, los grados de libertad $\nu$ controlan el comportamiento de la cola de la distribución; a medida que $\nu\rightarrow \infty$, la distribución $t$ converge a una distribución normal. @he2012multiple consideraron una extensión multivariada de la familia gh @tukey1977modern, que es una transformación de una variable normal estándar para acomodar diferentes asimetrías y alargamientos de la distribución de variables no normales, y la transformación está controlada por varios parámetros desconocidos. Además de los modelos normales multivariados contaminados, [@little_rubin_2020, capitulo 12] proporcionaron algunos ejemplos sobre la familia de modelos normales multivariados ponderados. También similar a los modelos de mezcla normal, un desafío técnico de usar estos modelos para la imputación es que las distribuciones posteriores de los parámetros pueden ser bastante complejas. El algoritmo DA correspondiente podría necesitar código específico o necesitar ser ejecutado con la ayuda de paquetes de software bayesianos. 
+En el mismo espíritu que los modelos de mezcla normal, otra estrategia JM para datos no normales es imponer modelos que puedan acomodar características no normales de los datos utilizando parámetros adicionales (es decir, además de $\mu$ y $\Sigma$) e incluir modelos normales como casos especiales. Por ejemplo, @liu1995missing desarrolló modelos de imputación que asumen una familia $t$-multivariada. En la familia $t$, los grados de libertad $\nu$ controlan el comportamiento de la cola de la distribución; a medida que $\nu\rightarrow \infty$, la distribución $t$ converge a una distribución normal. @he2012multiple consideraron una extensión multivariada de la familia gh @tukey1977modern, que es una transformación de una variable normal estándar para acomodar diferentes asimetrías y alargamientos de la distribución de variables no normales, y la transformación está controlada por varios parámetros desconocidos. Además de los modelos normales multivariados contaminados, [@little_rubin_2020, capitulo 12] proporcionaron algunos ejemplos sobre la familia de modelos normales multivariados ponderados. También similar a los modelos de mezcla normal, un desafío técnico de usar estos modelos para la imputación es que las distribuciones posteriores de los parámetros pueden ser bastante complejas. El algoritmo DA correspondiente podría necesitar código específico o necesitar ser ejecutado con la ayuda de paquetes de software bayesianos. 
 
 
 
 
-### Imputación de variables binarias
+## Imputación de variables binarias
 
 En el caso de variables binarias, es posible utilizar un modelo logistico de la forma
 
@@ -2293,16 +2339,16 @@ En el caso de variables binarias, es posible utilizar un modelo logistico de la 
 
 Sea $\hat{\beta}$ la estimación del parametro del modelo ajustado a los individuos con la información observada $Y_\text{obs}$ y su matriz de varianzas covarianzas $\mathbf{V}$. Sea $\boldsymbol{\beta}^*$ una realización de la distribución aposteriori de $\boldsymbol{\beta}$ aproximada por $\text{MVN}(\hat{\boldsymbol{\beta}},\mathbf{V})$
 
-Para cada observación perdida $y_\text{miss}$ tomamos $p^* = [1 + \exp(-\boldsymbol{\beta}^*\mathbf{x}_i)]^{-1}$ y generamos la imputación $y_i^*$ como
+Para cada observación perdida $y_\text{miss}$ se toma $p^* = [1 + \exp(-\boldsymbol{\beta}^*\mathbf{x}_i)]^{-1}$ y se genera la imputación $y_i^*$ como
 
 \begin{align}
 y_i^\ast= \left\{ \begin{array}{lcc} 1 & \text{si}\ \ u_i < p_i^\ast \\ \\ 0 & \text{En otro caso.} \end{array} \right.
 \end{align}
 Donde $u_i$ es una realización aleatoria de una distribución uniforme en $(0,1)$
 
-### Imputación de variables categóricas no ordenadas
+## Imputación de variables categóricas no ordenadas
 
-En el caso de variables categóricas no ordenadas con $L > 2$ categorías pueden ser modeladas usando una regresión logística multinomial, donde cada categoría tiene una regresión logistica que se compara con otra categoría determinada (digamos $l = 1$)
+En el caso de variables categóricas no ordenadas con $L > 2$ categorías pueden ser modeladas usando una regresión logística multinomial, donde cada categoría tiene una regresión logistica que se compara con otra categoría determinada (Dígase $l = 1$)
 
 \begin{equation}
 P(y_\text{obs} = l|\mathbf{x},\boldsymbol{\beta}) = \left[\sum_{l' = 1}^L\exp(\beta_{l'}\mathbf{x})\right]^{-1} \exp(\boldsymbol{\beta}_l\mathbf{x}) (\#eq:fm17)
@@ -2318,13 +2364,71 @@ y_i^* = 1 + \sum_{l' = 1}^{L}I(u_i > c_{il}) (\#eq:fm18)
 
 donde $u_i$ es una realización aleatoria proveniente de una distribución uniforme en $(0,1)$ y $I(u_i > c_{il}) = 1$ si $u_i > c_{il}$. 0 en otro caso.
 
-### Imputación multivariada para datos categóricos
+## Imputación multivariada para datos categóricos
 
-### Imputación mixta de variables categóricas y continuas
+### Modelos Log-Lineales
 
-## Analisis de sensibilidad
+Un enfoque clásico para imputar múltiples variables categóricas se basa en una tabla de contingencia formada por dichas variables. Los datos faltantes en tablas de contingencia pueden modelarse usando modelos log-lineales [@little_rubin_2020, Capítulo 13]. Dichos modelos suponen que las variables categóricas $Y_1,...,Y_p$ pueden organizarse como una tabla de contingencia de $p$-dimensiones, dicha tabla contiene $C$ celdas definidas por niveles conjuntos de las variables. Las entradas en la tabla son recuentos $n_{ij,...,u}$, donde $n_{ij,...,u}$ representa el número de recuentos observados en la celda con $Y_1 = i,  Y_2 = j, ..., Y_p = u$, con $i = 1, ..., I$, $j = 1, ..., J$, ..., y $u = 1, ...,U$. En estos casos la idea es modelar la probabilidad de celda $p_{ij,...,u}$ a través de un modelo log-lineal de la forma
 
-## Consideraciones de imputar en encuestas complejas
+\begin{equation}
+\log(p_{ij,...,u}) = \beta_0 + \beta^{(1)}_i + \beta^{(2)}_j + ... + \beta^{(p)}_u . (\#eq:fmmll)
+\end{equation}
+
+Se necesitan restricciones para estimar estos $\beta$ de manera única, y un conjunto común de restricciones es hacer que sumen cero a través de diferentes niveles de cada marginal, es decir, 
+
+$\sum_{i=1}^{I} \beta^{(1)}_i = ... = \sum_{u=1}^{U} \beta^{(p)}_u = 0$.
+
+Notar que el Modelo \@ref(eq:fmmll) solo incluye efectos principales de cada una de las $p$ variables (es decir, factores). Las interacciones de orden superior entre estos efectos, como entre $Y_1$ y $Y_2$, pueden ser parametrizadas incluyendo $\beta^{(12)}_{ij}$ en el modelo. Por otro lado, algunos de los coeficientes (ya sean efectos principales o interacciones) pueden establecerse como 0 para simplificación. Por lo tanto, hay muchas especificaciones posibles de modelos log-lineales.
+
+Los valores faltantes en el marco de la tabla de contingencia resultan en recuentos parcialmente clasificados. @schafer1997analysis presentó algoritmos de imputación DA bayesianos bajo los modelos log-lineales. En resumen, el paso posterior del algoritmo DA extrae conjuntos de parámetros del modelo log-lineal de distribuciones condicionales de Dirichlet dadas los valores actuales de los otros parámetros del modelo log-lineal y los datos imputados; el paso de imputación del algoritmo DA asigna cada recuento parcialmente clasificado al conjunto de celdas posibles como extracciones de una distribución multinomial, con probabilidades condicionales calculadas desde el paso posterior. Estos algoritmos pueden ser implementados en R mediante la libreria R cat.
+
+A medida que aumenta el número de variables categóricas, el nivel de todas las posibles clasificaciones conjuntas en la tabla de contingencia aumenta. Como resultado, incluso para datos completos con tamaños de muestra suficientes, algunas de las celdas podrían tener un recuento cero o números pequeños (es decir, celdas dispersas) y pueden crear un problema al estimar estas probabilidades de celda. Esto es similar a la separación de datos en la regresión logística. Muchos modelos log-lineales utilizados en la práctica solo mantienen efectos principales para evitar el tamaño de muestra pequeño y los problemas de estimación correspondientes cuando se incluyen posibles interacciones. Sin embargo, es importante evaluar y defender dicha especificación cuando solo se implementan modelos de efecto principal. En general, la estrategia de imputación funciona mejor si el número de variables es pequeño a moderado (por ejemplo, 3 a 5). Con un gran número de variables categóricas, podrían necesitarse estrategias de modelamientos alternativas [@he2021multiple].
+
+### Modelos de variables latentes
+
+Un enfoque más usado es utilizar modelos de variables latentes para imputar variables categóricas. En este caso, Si $Y_j$, con $j = 1, \ldots, p$ son todas variables binarias. Primero se define una variable latente normal estándar $Z_j$ tal que $Y_j = 1$ si y solo si $Z_j > 0$ y $Y_j = 0$ en caso contrario. Entonces $Y_j$ puede ser modelado como:
+\[ Y_j = \begin{cases} 
+1 & \text{si } Z_j > 0 \\
+0 & \text{si } Z_j \leq 0 
+\end{cases}, \quad j = 1, \ldots, p, \]
+donde $(Z_1, \ldots, Z_p) \sim N_p(\mu, \Omega)$ y $\mu = (\mu_1, \ldots, \mu_p)$ es el vector de medias, y $\Omega$ es la matriz de correlación para las variables normales estándar p-variadas (es decir, $Z$), capturando la correlación tetracórica entre p variables binarias de $Y$. El Modelo es también conocido como un modelo probit multivariado.
+
+Notar que el vector $Z$ no se observa. Una vez que los elementos de $Z$ están determinados, los correspondientes $Y_j$ pueden ser generados. Bajo el Modelo, necesitamos imputar $Z$ así como imputar los valores faltantes de $Y$. Se puede desarrollar un algoritmo de imputación bayesiana bajo distribuciones priori comúnmente utilizadas para $\mu$ y $\Omega$. Un elemento clave del algoritmo de imputación implica dibujar $Z$ de distribuciones normales truncadas dadas $Y$ [@albert1993].
+
+La idea del enfoque de modelado latente también puede extenderse para imputar variables ordinales y nominales. Por ejemplo, suponga que $Y$ es una variable ordinal con $K$ categorías $K \geq 3$. Entonces $Y$ puede ser expresado como:
+\[ Y = \begin{cases} 
+1 & \text{si } Z \in (-\infty, \tau_1] \\
+\vdots \\
+k & \text{si } Z \in (\tau_{k-1}, \tau_k] \\
+K & \text{si } Z \in (\tau_{K-1}, \infty) 
+\end{cases}, \]
+donde $\tau_1, \ldots, \tau_{K-1}$ representan los $K - 1$ parámetros de umbral que separan la distribución normal estándar $Z$ en $K$ segmentos.
+
+Los algoritmos de imputación de este tipo de modelos están implementados por la librería de R llamada jomo.
+
+## Imputación múltiple por ecuaciones encadenadas (MICE)
+
+Una desventaja de los métodos presentados en las secciones anteriores es que las distribuciones conjuntas estándar utilizadas no siempre proporcionan un buen ajuste a datos multivariados reales. A menudo es posible formular un conjunto de distribuciones condicionales relacionando cada variable con la colección de otras variables, que parecen razonables cuando se toman de una en una, pero son inconsistentes en el sentido de que no pueden derivarse de una única distribución conjunta. Tales modelos pueden ser útiles para imputaciones multiples dadas por ecuaciones encadenadas (MICE por sus siglas en inglés). MICE se basa en esta idea y crea imputaciones basadas en un conjunto de distribuciones condicionales. Específicamente, sea $X_1,..., X_K$ sea un conjunto de variables con valores faltantes, $Z$ un vector de variables que se observan completamente, $x^{(0)}$ el conjunto de datos observados en $X_1,..., X_K$, y $x_j^{(1)}$ el conjunto de valores faltantes para $X_j$, $j = 1,..., K$. Para $j = 1,..., K$, especificamos un modelo adecuado para la distribución condicional de $X_j$ dado $(X_1,..., X_{j-1}, X_{j+1},..., X_K, Z)$ con densidad $p_j(x_j | x_1,..., x_{j-1}, x_{j+1},..., x_K| z, \theta_j)$, parámetros $\theta_j$, y distribución previa $\pi_j(\theta_j)$. Los modelos tienen en cuenta la naturaleza del resultado variable, por ejemplo, logit o probit para una variable binaria, y pueden incluir términos no lineales e interacciones de los predictores, si es apropiado. Sin embargo, no necesariamente corresponden a una distribución conjunta coherente para $X_1,..., X_K$. Los valores faltantes se imputan mediante los siguientes pasos:
+
+1. Crear imputaciones iniciales $x^{(0)(1)}_1,..., x^{(0)(1)}_K$ de los valores faltantes mediante algún procedimiento aproximado.
+2. Dados los valores imputados actuales $x^{(t)(1)}_1,..., x^{(t)(1)}_K$ en la iteración $t$, generar valores imputados actualizados para cada variable como sorteos de la siguiente secuencia de distribuciones predictivas $p$:
+
+\begin{align*}
+x^{(t+1)(1)}_1 \sim &  p(x^{(1)}_1 | x^{(0)}, z, x^{(t)(1)}_2, x^{(t)(1)}_3,..., x^{(t)(1)}_{K-1}, x^{(t)(1)}_K),\\
+\vdots \\
+x^{(t+1)(1)}_j  \sim & p(x^{(1)}_j | x^{(0)}, z, x^{(t+1)(1)}_1, x^{(t+1)(1)}_{j-1}, x^{(t)(1)}_j,..., x^{(t)(1)}_K),\\
+\vdots \\
+x^{(t+1)(1)}_K \sim & p(x^{(1)}_K | x^{(0)}, z, x^{(t+1)(1)}_1, x^{(t+1)(1)}_2, x^{(t)(1)}_3,..., x^{(t)(1)}_{K-1}). 
+\end{align*}
+
+En particular, el conjunto de realizaciones $x^{(t+1)(1)}_j$ en esta secuencia se crea primero generando $\theta^{(t+1)}_j$ de la distribución posterior de $\theta_j$, dado $x^{(0)}, z, x^{(t+1)(1)}_1,..., x^{(t+1)(1)}_{j-1}, x^{(t)(1)}_j,..., x^{(t)(1)}_K$, y luego generando $x^{(t+1)(1)}_j$ de su distribución predictiva posteriori, dado 
+$x^{(0)}, z, x^{(t+1)(1)}_1,..., x^{(t+1)(1)}_{j-1}$, $x^{(t)(1)}_j,..., x^{(t)(1)}_K$, y $\theta^{(t+1)}_j$. Para modelos iid, estos sorteos son independientes entre las unidades y suelen ser computacionalmente sencillos.
+
+Cuando el conjunto de distribuciones condicionales corresponde a una distribución conjunta consistente, este algoritmo se traduce en un gibbs sampling y la secuencia converge a extracciones de la distribución posterior correcta. En particular, Bayes e imputación múltiple para el modelo normal bivariadode las secciones anteriores pueden implementarse mediante el enfoque de ecuaciones encadenadas, siendo cada distribución condicional normal con una regresión aditiva lineal en las variables condicionadas, con una varianza residual constante. En otros contextos, no se garantiza la convergencia a una distribución estacionaria; sin embargo, el procedimiento parece producir imputaciones útiles, siempre que las distribuciones condicionales proporcionen buenos ajustes a los datos observados. La mayor flexibilidad al modelar estas distribuciones condicionales puede compensar la falta de una justificación teórica clara del método.
+
+Debido a que las múltiples imputaciones de ecuaciones encadenadas se basan en una secuencia de modelos de regresión, es importante realizar diagnósticos para asegurarse de que las imputaciones sean razonables. Un enfoque posiblemente útil es estimar la propensión a la falta de datos para cada variable con valores faltantes, condicional a los valores observados o imputados de otras variables, y luego comparar la distribución de los valores observados con la distribución de un conjunto de valores imputados, dentro de categorías de la propensión estimada a la falta de datos. Si el modelo de imputación está generando imputaciones razonables, estas distribuciones empíricas deberían parecerse [@little_rubin_2020]. 
+
+# Consideraciones de la imputación múltiple en encuestas complejas
 
 Según @medina2007imputacion, es importante recordar que los métodos de imputación presuponen ciertas características en la distribución de los datos faltantes, pero no abordan explícitamente el mecanismo que condujo a la selección de las unidades de observación. De forma incorrecta, estos métodos suelen asumir que los datos provienen de una muestra aleatoria y que todas las unidades tienen igual probabilidad de ser seleccionadas.
 
@@ -2353,1052 +2457,13 @@ La aplicación de métodos de imputación en diseños de muestreo complejos requ
 Finalmente, los investigadores deben ser conscientes de que incluso los métodos de imputación más sofisticados no pueden reemplazar completamente los datos faltantes. A pesar de las técnicas de imputación, siempre existe el riesgo de sesgo debido a la falta de datos. Por lo tanto, es fundamental minimizar la cantidad de datos faltantes en la etapa de diseño y recolección de datos, y tratar los datos faltantes de manera adecuada en la etapa de análisis.
 
 
-# Anexo: Definiciones y aplicaciones en R
+# Referencias
 
-## Deiniciones
 
-En el lenguaje de programación R, utilizamos herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
 
-```{r}
-library(tidyverse)
-library(naniar)
-```
 
 
-La estadística Gertrude Mary Cox (@monroe1980memoriam) dijo una vez: "Lo mejor que se puede hacer con los datos faltantes es no tener ninguno". Si bien esto es cierto, no es el mundo en el que vivimos. Trabajar con datos del mundo real significa trabajar con datos faltantes. Para ser un gran analista, necesitamos saber cómo lidiar con los valores faltantes. Comprender cómo funcionan los datos faltantes es importante, ya que pueden tener efectos inesperados en tu análisis. Por ejemplo, ajustar un modelo lineal en datos con valores faltantes elimina fragmentos de datos. Esto significa que tus decisiones no se basan en la evidencia correcta. Reemplazar los valores faltantes, lo que se llama imputación, debe hacerse con mucho cuidado, ya que insertar solo la media puede llevar a estimaciones y decisiones deficientes.
 
-En este apartado aprenderemos sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes. Por lo tanto, asumiremos que tenemoss experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. 
 
-**¿Qué son los valores faltantes?**
 
-Antes de comenzar, debemos definir los valores faltantes. Los valores faltantes son valores que deberían haberse registrado, pero no lo fueron. Pensemos en esto de esta manera: puedes no haber registrado accidentalmente que viste un pájaro, esto es un valor faltante. Esto es diferente a registrar que no se observaron pájaros. `R` almacena los valores faltantes como `NA`, que significa no disponible.
-
-**¿Cómo puedo verificar si tengo valores faltantes?**
-
-Los valores faltantes no saltan y gritan "¡Estoy aquí!". Por lo general, están ocultos, como una aguja en un pajar. Para detectar valores faltantes, usaresmo `any_na`, que devuelve `TRUE` si hay valores faltantes y `FALSE` si no los hay. `are_na` pregunta "¿son estos `NA`?" y devuelve `TRUE/FALSE` para cada valor. are_na nos muestra 3 valores `TRUE`, que corresponden a 3 valores faltantes. Para evitar contar cada `TRUE` manualmente, `n_miss` cuenta el número de valores faltantes. Y `prop_miss` proporciona la proporción de valores faltantes, lo que proporciona un contexto importante: Por ejemplo, el 50% de los datos está faltando.
-
-¿Qué sucede cuando mezclamos valores faltantes con nuestros cálculos? Necesitamos saber qué sucede para poder estar preparados para encontrar estos casos. La regla general es: Los cálculos con `NA` devuelven `NA`. Digamos que tienes la altura de tres amigos: Sophie, Dan y Fred. La suma de sus alturas devuelve `NA`, esto se debe a que no conocemos la suma de un número y `NA`.
-
-Hay algunas "trampas" que debes tener en cuenta al trabajar con datos faltantes: Por ejemplo, `NaN` significa "Not a Number" (No es un número) y se obtiene de operaciones como la raíz cuadrada de -1. **R** interpreta `NaN` como un valor faltante. `NULL` es un valor vacío pero no es faltante. Esto es sutilmente diferente de los valores faltantes: un cubo vacío no tiene agua faltante. `Inf` es un valor infinito, y se obtiene de ecuaciones como 10 dividido por 0 y no es faltante.
-
-Por último, debeos tener cuidado con las declaraciones condicionales con valores faltantes. Por ejemplo, `NA` o `TRUE` es `TRUE`. `NA` o `FALSE` es `NA`. `NA` `+` `NaN` es `NA`. `NaN` `+` `NA` es `NaN`.
-
-
-## Usando y encontrando valores faltantes
-
-Al trabajar con datos faltantes, hay algunos comandos con los que deberías estar familiarizado - en primer lugar, debes poder identificar si hay valores faltantes y dónde se encuentran.
-
-Usando las herramientas `any_na()` y `are_na()`, identifica qué valores faltan.
-
-
-
-
-```{r}
-# creamos x, un vector, con valores NA, NaN, Inf, ".", y "missing"
-x <- c(NA, NaN,Inf, ".", "missing")
-
-# Usamos any_na() y are_na() para explorar los valores missings
-any_na(x)
-are_na(x)
-
-```
-
-
-**¿Cuántos valores faltantes hay?**
-
-Una de las primeras cosas que desearás comprobar en un nuevo conjunto de datos es si existen valores faltantes y cuántos hay.
-
-Podrías usar `are_na()` y contar los valores faltantes, pero la forma más eficiente de contarlos es usar la función `n_miss()`. Esto te dirá el número total de valores faltantes en los datos.
-
-Luego puedes encontrar el porcentaje de valores faltantes en los datos con la función `pct_miss`. Esto te dirá el porcentaje de valores faltantes en los datos.
-
-También puedes encontrar el complemento de estos valores, cuántos valores completos hay, usando `n_complete` y `pct_complete`.
-
-
-```{r}
-# Usando el dataframe de ejemplo de estatuta (heights) y pesos (weights) dat_hw
-dat_hw <- read.table("dealing/dat_hw.txt", h=T,  dec=".")
-```
-
-
-
-```{r}
-# Usa n_miss() para contar el numero total de valores missing en dat_hw
-naniar::n_miss(dat_hw)
-
-# Usa n_miss() en dat_hw$weight para contar el numero total de valores missing
-naniar::n_miss(dat_hw$weight)
-
-# Usa n_complete() en dat_hw para contar el numero total de valores completos
-n_complete(dat_hw)
-
-# Usa n_complete() en dat_hw$weight para contar el numero total de valores completos
-n_complete(dat_hw$weight)
-
-# Usamos prop_miss() y prop_complete() en dat_hw para contar el numero total de valores missing en cada una de las variables
-prop_miss(dat_hw)
-prop_complete(dat_hw)
-```
-
-**Resumiendo la ausencia de datos**
-
-Ahora que comprendes el comportamiento de los valores faltantes en R y cómo contarlos, escalaremos nuestros resúmenes para casos (filas) y variables, utilizando `miss_var_summary()` y `miss_case_summary()`, y también exploraremos cómo se pueden aplicar a grupos en un dataframe utilizando la función `group_by` de `dplyr`.
-
-```{r}
-# Summarise missingness in each variable of the `airquality` dataset
-miss_var_summary(airquality)
-
-
-# Summarise missingness in each case of the `airquality` dataset
-miss_case_summary(airquality)
-```
-
-```{r}
-# Return the summary of missingness in each variable, grouped by Month, in the `airquality` dataset
-airquality %>% group_by(Month) %>% miss_var_summary()
-
-# Return the summary of missingness in each case, grouped by Month, in the `airquality` dataset
-airquality %>% group_by(Month) %>% miss_case_summary()
-```
-
-
-###########################
-
-
-## Evaluación de la no respuesta
-
-### Actividad 
-
-Considerando el siguien set de datos.
-
-```{r, warning=FALSE, message=FALSE}
-library(dplyr)
-library(ggplot2)
-biopics <- read.csv("curso_imputacion/biopics.csv")
-```
-
-Muestra las primeras 10 observaciones de los datos `biopics` y familiarízate con las variables.
-
-```{r}
-# Muestra las primeras 10 observaciones
-head(biopics, 10)
-
-# Obtiene el numero de valores perdidos por variable
-biopics %>%
-	is.na() %>% 
-	colSums()
-```
-
-### Reconociendo los mecanismos de datos faltantes
-
-En este ejercicio, se presentarán seis escenarios diferentes en los que faltan algunos datos. Intenta asignar a cada uno de ellos el mecanismo de datos faltantes más probable. Como recordatorio, aquí hay algunas pautas generales:
-
-Si la razón de la falta de datos es puramente aleatoria, es MCAR.
-Si la razón de la falta de datos puede explicarse por otra variable, es MAR.
-Si la razón de la falta de datos depende del valor faltante en sí mismo, es MNAR.
-
-![alt text](procesos_sp.png)
-
-
-##### Prueba t para perdida MAR
-
-###### **Preparación de los datos**
-
-De los tres, MAR es posiblemente el más importante de detectar, ya que muchos métodos de imputación asumen que los datos son MAR. En este ejercicio práctico con `R`, buscaremos identificar si el patrón de pérdida es MAR.
-
-Trabajaremos con los datos de la base `biopics`. El objetivo es probar si el número de valores faltantes en `earnings` difiere por género del sujeto. En este ejercicio, solo se preparan los datos para aplicar una *prueba t*. Primero, se crea una variable ficticia que indica la falta de datos en `earnings`. Luego, se divide por género filtrando los datos para mantener uno de los géneros y luego sacando la variable ficticia. Para filtrar, puede ser útil imprimir el `head()` de `biopics` en la consola y examinar la variable de género.
-
-
-
-```{r}
-# Crea una variable dummy para la perdida en el gasto
-biopics <- biopics %>% 
-  mutate(missing_earnings = is.na(earnings))
-
-# Obtiene la perdida del gasto para hombres
-missing_earnings_males <- biopics %>% 
-  filter(sub_sex == "Male") %>% 
-  pull(missing_earnings)
-
-# Obtiene la perdida del gasto para mujeres
-missing_earnings_females <- biopics %>% 
-  filter(sub_sex == "Female") %>% 
-  pull(missing_earnings)
-```
-
-###### **Interpretación**
-
-En el ejercicio anterior, hemos preparado dos vectores con los valores faltantes de ingresos para cada sexo: `perdidos_gastos_hombres` y `perdidos_gastos_mujeres`. Ambos están disponibles en tu espacio de trabajo. Ahora es posible realizar la **prueba t** para verificar si sus medias difieren significativamente entre sí con el siguiente script
-
-```{r}
-# Ejecuta el t-test
-t.test(missing_earnings_males, missing_earnings_females)
-```
-
-El resultado muestra que no existe diferencia estadísticamente significativa ($\alpha > 0.05$) entre ambos grupos. Por lo tanto, se concluye que la perdida es MAR.
-
-
-### Aggregation plot
-
-El gráfico de agregación proporciona la respuesta a la pregunta básica que uno puede hacer sobre un conjunto de datos incompleto: ¿en qué combinaciones de variables faltan datos y con qué frecuencia? Es muy útil para obtener una visión general de alto nivel de los patrones de ausencia de datos. Por ejemplo, hace visible inmediatamente si hay alguna combinación de variables que faltan juntas con frecuencia, lo que podría sugerir alguna relación entre ellas.
-
-En este ejercicio, primero aplicaremos el gráfico de agregación para los datos de `biopics` y luego practicarás sacando conclusiones basadas en él. ¡Vamos a hacer algunos gráficos!
-
-```{r}
-# Load the VIM package
-library(VIM)
-
-# Draw an aggregation plot of biopics
-biopics %>% 
-	aggr(combined = TRUE, numbers = TRUE)
-```
-
-### Cuestiones aclaratorias
-
-Basado en el gráfico de agregación que acaba de crear, ¿cuál de las siguientes afirmaciones es falsa?
-
-Posibles respuestas:
-
-a. El 10% de las observaciones tienen valores faltantes tanto en `earnings` como en `sub_race`.
-
-b. Hay más valores faltantes en `sub_race` que en `earnings`.
-
-c. El 42% de las observaciones no tiene entradas faltantes.
-
-d. Exactamente dos variables en los datos `biopics` tienen valores faltantes.
-
-
-### gráfico de Mosaico
-
-El gráfico de agregación que has dibujado en el ejercicio anterior te dio una visión general de alto nivel de los datos faltantes. Si estás interesado en la interacción entre variables específicas, un gráfico de Mosaico es el camino a seguir. Te permite estudiar el porcentaje de valores faltantes en una variable para diferentes valores de la otra, lo cual es conceptualmente muy similar a los test t que has estado realizando en la lección anterior.
-
-En este ejercicio, dibujarás un gráfico de Mosaico para investigar el porcentaje de datos faltantes en `earnings` para diferentes categorías de `sub_race`. ¿Hay más datos faltantes en `earnings` para algunas razas específicas del personaje principal de la película? ¡Vamos a descubrirlo! El paquete `VIM` ya ha sido cargado para ti.
-
-
-```{r}
-# Draw a spine plot to analyse missing values in earnings by sub_race
-
-biopics %>% 
-	dplyr::select(sub_race,earnings) %>%
-	spineMiss()
-```
-### Cuestiones aclaratorias
-
-Basándose en la gráfica de Mosaico que acabas de crear, ¿cuál de las siguientes afirmaciones es falsa?
-
-Opciones de respuesta:
-
-a. En la gran mayoría de las películas, el personaje principal es blanco.
-
-b. Cuando el sujeto principal es africano, es más probable que tengamos información completa sobre las ganancias.
-
-c. En lo que respecta a las ganancias y la subraza, los datos parecen ser MAR.
-
-d. La raza que aparece con menos frecuencia en los datos tiene alrededor del 40% de las ganancias faltantes. (incorrecta)
-
-### Mosaic plot
-
-La gráfica de Mosaico que hemos creado en el ejercicio anterior permite estudiar los patrones de datos faltantes entre dos variables a la vez. Esta idea se generaliza a más variables en forma de un gráfico de mosaico.
-
-En este ejercicio, comenzarás por crear una variable ficticia que indique si Estados Unidos participó en la producción de cada película. Para hacer esto, utilizarás la función `grepl()`, que verifica si la cadena pasada como su primer argumento está presente en el objeto pasado como su segundo argumento. Luego, crearemos un gráfico de mosaico para ver si el género del sujeto se correlaciona con la cantidad de datos faltantes en `earnings` tanto para películas estadounidenses como no estadounidenses.
-
-
-```{r}
-# Prepare data for plotting and draw a mosaic plot
-biopics %>%
-	# Create a dummy variable for US-produced movies
-	mutate(is_US_movie = grepl("US", country)) %>%
-	# Draw mosaic plot
-	mosaicMiss(highlight = "earnings", 
-             plotvars = c("is_US_movie", "sub_sex"))
-
-
-```
-
-### Olfateando el peligro de la imputación por la media
-
-Uno de los métodos de imputación más populares es la imputación por media, en la cual los valores faltantes en una variable se reemplazan con la media de los valores observados en esa variable. Sin embargo, en muchos casos, este enfoque simple es una mala elección. A veces, una mirada rápida a los datos puede alertarnos sobre los peligros de la imputación por la media.
-
-En esta etapa, trabajaremos con una submuestra de los datos del proyecto de *Atmósfera Tropical Oceánica* (`tao`). El conjunto de datos consiste en mediciones atmosféricas tomadas en dos períodos de tiempo diferentes en cinco ubicaciones distintas. Los datos vienen con el paquete `VIM`.
-
-En este ejercicio, nos familiarizaremos con los datos y realizaremos un análisis simple que indicará cuáles podrían ser las consecuencias de la imputación por la media.
-
-```{r}
-data(tao, package = "VIM")
-names(tao)<-tolower(names(tao))
-names(tao)<-sub("[.]", "_", names(tao))
-names(tao)<-sub("[.]", "_", names(tao))
-
-# Imprime las primeras 10 observaciones
-head(tao, 10)
-
-# Obtiene el numero de valores perdidos por columna
-tao %>%
-  is.na() %>% 
-  colSums()
-
-# Calculate the number of missing values in air_temp per year
-tao %>% 
-  group_by(year) %>% 
-  summarize(num_miss = sum(is.na(air_temp)))
-```
-
-### Imputación de la media en temperatura
-
-Imputar la media en la temperatura puede ser arriesgado. Si la variable que se está imputando está correlacionada con otras variables, esta correlación podría ser destruida por los valores imputados. Lo viste en el ejercicio anterior cuando analizaste la variable `air_temp`.
-
-Para averiguar si estas preocupaciones son válidas, en este ejercicio realizarás una imputación de la media en `air_temp`, creando también un indicador binario para mostrar dónde se imputan los valores. Será útil en el siguiente ejercicio, cuando evaluarás el desempeño de tu imputación. ¡Vamos a completar esos valores faltantes!
-
-```{r}
-tao_imp <- tao %>% 
-  # Create a binary indicator for missing values in air_temp
-  mutate(air_temp_imp = ifelse(is.na(air_temp), TRUE, FALSE)) %>%
-  # Impute air_temp with its mean
-  mutate(air_temp = ifelse(is.na(air_temp), mean(air_temp, na.rm = TRUE), air_temp))
-
-# Print the first 10 rows of tao_imp
-head(tao_imp, 10)
-```
-```{r}
-head(filter(tao_imp, air_temp_imp==TRUE))
-```
-
-Nos damos cuenta que no tiene mucho sentido imputar por la media, ya que puede agregar inconsistencias entre las variables correlacionadas.
-
-
-### Evaluar la calidad de la imputación con un marginplot
-
-En el último ejercicio, hemos imputado la media de `air_temp` y hemos agregado una variable indicadora para denotar cuáles valores fueron imputados, llamada `air_temp_imp`. Ahora es momento de ver qué tan bien funciona esto.
-
-Al examinar los datos de `tao`, podríamos haber notado que también contiene una variable llamada `sea_surface_temp`, que razonablemente se esperaría que esté positivamente correlacionada con `air_temp`. Si ese es el caso, esperaríamos que estas dos temperaturas sean altas o bajas al mismo tiempo. Imputar la temperatura media del aire cuando la temperatura del mar es alta o baja rompería esta relación.
-
-Para averiguarlo, en este ejercicio seleccionaremos las dos variables de temperatura y la variable indicadora y las usaremos para crear un `marginplot`. 
-
-
-```{r}
-# Creamos un marginplot de air_temp vs sea_surface_temp
-tao_imp %>% 
-  select(air_temp, sea_surface_temp, air_temp_imp) %>%
-  marginplot(delimiter = "imp")
-```
-
-### Imputación por hot-deck
-
-La imputación por hot-deck es un método simple que reemplaza cada valor faltante en una variable por el último valor observado en esa variable. Es muy rápido, ya que solo se necesita una revisión por los datos, pero en su forma más simple, hot-deck a veces puede romper las relaciones entre las variables.
-
-En este ejemplo, lo probaremos en el conjunto de datos `tao`. Imputaremos los valores faltantes en la columna de temperatura del aire `air_temp` por hot-deck y luego visualizaremos un gráfico de margen (`marginplot`) para analizar la relación entre los valores imputados y la columna de temperatura de la superficie del mar `sea_surface_temp`.
-
-```{r}
-# Load VIM package
-library(VIM)
-
-# Impute air_temp in tao with hot-deck imputation
-tao_imp <- hotdeck(tao, variable = "air_temp")
-
-# Check the number of missing values in each variable
-tao_imp %>% 
-	is.na() %>% 
-	colSums()
-
-# Draw a margin plot of air_temp vs sea_surface_temp
-tao_imp %>% 
-	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
-	marginplot(delimiter = "imp")
-```
- ¿Se ve bien la imputación? Observa las observaciones en la parte superior izquierda del gráfico con los datos de `air_temp` imputados y los valores altos en `sea_surface_temp`. Estas observaciones deben haber sido precedidas por observaciones con bajos valores de `air_temp` en el `data frame`, y por lo tanto, después de la imputación hot-deck, terminaron siendo valores atípicos con  `air_temp` bajos y `sea_surface_temp` altos.
- 
-### Hot-deck trucos y consejos I: imputando dentro de dominios
-
-Un truco que puede ayudar cuando la imputación por hot-deck rompe las relaciones entre las variables es imputar dentro de los dominios. Esto significa que si la variable a imputar está correlacionada con otra variable categórica, se puede ejecutar hot-deck por separado para cada una de sus categorías.
-
-Por ejemplo, se podría esperar que la temperatura del aire dependa del tiempo, ya que estamos viendo que las temperaturas promedio aumentan debido al calentamiento global. El indicador de tiempo que tenemos disponible en los datos de `tao` es una variable categórica, `year`. Primero, comprobaremos si la temperatura media del aire es diferente en cada uno de los dos años estudiados y luego ejecutaremos hot-deck dentro de los dominios de los años. Finalmente, volveremos a crear el `marginplot` para evaluar el rendimiento de la imputación.
-
-```{r}
-# Calculate mean air_temp per year
-tao %>% 
-	group_by(year) %>% 
-	summarize(average_air_temp = mean(air_temp, na.rm = TRUE))
-
-# Hot-deck-impute air_temp in tao by year domain
-tao_imp <- hotdeck(tao, variable = "air_temp", domain_var = "year")
-
-# Draw a margin plot of air_temp vs sea_surface_temp
-tao_imp %>% 
-	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
-	marginplot(delimiter = "imp")
-```
-Los resultados se ven mucho mejor esta vez. Sin embargo, si observas la esquina superior derecha del gráfico, verás que la varianza en los valores imputados (naranja) es algo mayor que entre los valores observados (azul). Veamos si podemos mejorar aún más en el próximo ejercicio.
-
-
-### Hot-deck trucos y consejos II: ordenando por variables correlacionadas
-
-Otro truco que puede mejorar el rendimiento de la imputación hot-deck es ordenar los datos por variables correlacionadas con la que queremos imputar.
-
-Por ejemplo, en todos los `marginplot` que hemos estado usando recientemente, se ha visto que la temperatura del aire está fuertemente correlacionada con la temperatura de la superficie del mar, lo cual tiene mucho sentido. Podemos aprovechar este conocimiento para mejorar la imputación hot-deck. Si primero ordenamos los datos por `sea_surface_temp`, entonces cada valor imputado de `air_temp` vendrá de un donante con una `sea_surface_temp` similar.
-
-```{r}
-# Hot-deck-impute air_temp in tao ordering by sea_surface_temp
-tao_imp <- hotdeck(tao, variable = "air_temp", ord_var = "sea_surface_temp")
-
-# Draw a margin plot of air_temp vs sea_surface_temp
-tao_imp %>% 
-	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
-	marginplot(delimiter = "imp")
-```
-
-Esta vez la imputación parece no afectar la relación entre las temperaturas del aire y la superficie del mar: si no fuera por los colores, probablemente no sabriamos cuáles son los valores imputados. La imputación hot-deck, posiblemente mejorada con la imputación por dominios o el ordenamiento, es un método rápido y sencillo que puede funcionar bien en muchas situaciones. Sin embargo, a veces puede ser necesario un enfoque más complejo. 
-
-
-### Elegir el número de vecinos
-
-La imputación de k-Nearest-Neighbors (o kNN) imputa los valores faltantes en una observación en función de los valores que provienen de las $k$ otras observaciones más similares a ella. El número de estas observaciones similares, llamadas vecinos, se consideran que es un parámetro que debe elegirse de antemano.
-
-¿Cómo elegir $k$? Una forma es probar diferentes valores y ver cómo afectan las relaciones entre los datos imputados y observados.
-
-Intentemos imputar `humidity` en los datos de `tao` utilizando tres valores diferentes de $k$ y ver cómo se ajustan los valores imputados a la relación entre `humidity` y `sea_surface_temp`.
-
-Imputamos `humidity` con la imputación de kNN usando 30 vecinos y visualizadolo mediante un `marginplot()` de `sea_surface_temp` vs `humidity`.
-
-```{r}
-# Impute humidity using 30 neighbors
-tao_imp <- kNN(tao, k = 30, variable = "humidity")
-
-# Draw a margin plot of sea_surface_temp vs humidity
-tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp", main = "k = 30")
-```
-
-Ahora, imputamos `humidity` con imputación kNN usando 15 vecinos y vemos mediante el `marginplot` de `sea_surface_temp` vs `humidity`.
-
-```{r}
-# Impute humidity using 15 neighbors
-tao_imp <- kNN(tao, k = 15, variable = "humidity")
-
-# Draw a margin plot of sea_surface_temp vs humidity
-tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp", main = "k = 15")
-```
-
-Finalmente, imputamos `humidity` con imputación kNN usando 5 vecinos y visualizando los resulados mediante `marginplot` de `sea_surface_temp` vs `humidity`.
-
-
-```{r}
-# Impute humidity using 5 neighbors
-tao_imp <- kNN(tao, k = 5, variable = "humidity")
-
-# Draw a margin plot of sea_surface_temp vs humidity
-tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp", main = "k = 5")
-```
-
-### kNN trucos y consejos I: ponderando los donantes
-
-Una variación de la imputación `kNN` que se aplica con frecuencia utiliza la llamada agregación ponderada por distancia. Lo que esto significa es que cuando agregamos los valores de los vecinos para obtener un reemplazo para un valor faltante, lo hacemos usando la media ponderada y las ponderaciones son las distancias invertidas de cada vecino. Como resultado, los vecinos más cercanos tienen más impacto en el valor imputado.
-
-En este ejercicio, aplicamos la agregación ponderada por distancia mientras imputamos los datos de `tao`. Esto solo requerirá dar dos argumentos adicionales a la función `kNN()`.
-
-
-```{r}
-# Load the VIM package
-library(VIM)
-
-# Impute humidity with kNN using distance-weighted mean
-tao_imp <- kNN(tao, 
-               k = 5, 
-               variable = "humidity", 
-               numFun = weighted.mean,
-               weightDist = TRUE)
-
-tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp")
-```
-### Trucos y consejos de kNN II: ordenar variables
-
-Mientras el algoritmo de k-Nearest Neighbors recorre las variables en los datos para imputarlos, calcula las distancias entre observaciones utilizando otras variables, algunas de las cuales ya han sido imputadas en los pasos anteriores. Esto significa que si las variables ubicadas al principio de los datos tienen muchas valores faltantes, entonces el cálculo de la distancia posterior se basa en muchos valores imputados. Esto introduce ruido en el cálculo de la distancia.
-
-Por esta razón, una buena práctica es ordenar las variables por el número de valores faltantes antes de realizar la imputación kNN. De esta manera, cada cálculo de distancia se basa en tantos datos observados y tan pocos datos imputados como sea posible.
-
-
-```{r}
-# Get tao variable names sorted by number of NAs
-vars_by_NAs <- tao %>%
-  is.na() %>%
-  colSums() %>%
-  sort(decreasing = FALSE) %>% 
-  names()
-
-# Sort tao variables and feed it to kNN imputation
-tao_imp <- tao %>% 
-  select(vars_by_NAs) %>% 
-  kNN(k= 5)
-
-tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp")
-```
-El kNN que acabamos de programar debería ser más preciso y resistente a imputaciones defectuosas, así que recordemos ordenar las variables primero antes de realizar la imputación con kNN. 
-
-
-### Imputación con regresión lineal
-
-A veces, se puede utilizar el conocimiento del dominio, la investigación previa o simplemente el sentido común para describir las relaciones entre las variables en sus datos. En tales casos, la imputación basada en modelos es una gran solución, ya que permite imputar cada variable de acuerdo con un modelo estadístico que puede especificar uno mismo, teniendo en cuenta cualquier suposición que pueda tener sobre cómo las variables impactan entre sí.
-
-Para variables continuas, una elección de modelo popular es la regresión lineal. Siempre puede incluir un cuadrado o un logaritmo de una variable en los predictores. En este caso, trabajaremos con el paquete `simputation` para ejecutar una sola imputación de regresión lineal en los datos `tao` y analizar los resultados.
-
-
-```{r, message=FALSE}
-# Lee la libreria simputation
-library(simputation)
-
-# Imputa air_temp y humidity con una regresion lineal
-formula <- air_temp + humidity ~ year + latitude + sea_surface_temp
-tao_imp <- impute_lm(tao, formula)
-```
-
-
-
-
-```{r}
-# Obtenemos el numero de valores missing por columna
-tao_imp %>% 
-  is.na() %>% 
-  colSums()
-```
-
-```{r}
-# Imprime las celdas de tao_imp en donde air_temp o humidity siguen missing 
-tao_imp %>% 
-  filter(is.na(air_temp) | is.na(humidity))
-```
-
-
-La regresión lineal falla cuando al menos uno de los predictores está ausente. En este caso, fue `sea_surface_temp`. En el próximo ejercicio, lo solucionaremos inicializando los valores faltantes antes de ejecutar `impute_lm()`.
-
-
-### Inicialización de valores perdidos e iteración sobre variables
-
-Como acabamos de ver, la ejecución de `impute_lm()` podría no llenar todos los valores perdidos. Para asegurarte de imputar todos ellos, debemos inicializar los valores perdidos con un método simple, como la imputación de hot-deck que de la sección anterior, que simplemente retroalimenta el último valor observado.
-
-Además, una sola imputación generalmente no es suficiente. Se basa en los valores iniciales básicos y podría estar sesgada. Un enfoque adecuado es iterar sobre las variables, imputándolas una a la vez en las ubicaciones donde originalmente faltan.
-
-En este ejercicio, primero inicializaremos los valores perdidos con la imputación de hot-deck y luego iteraremos cinco veces sobre `air_temp` y `humidity` de los datos `tao` para imputarlos con la regresión lineal.
-
-
-```{r}
-# Inicializa los valores missing con hot-deck
-tao_imp <- hotdeck(tao)
-
-# Crea un indicador booleano desde donde air_temp y humidity son missing
-missing_air_temp <- tao_imp$air_temp_imp
-missing_humidity <- tao_imp$humidity_imp
-
-for (i in 1:5) {
-  # Define air_temp como NA en los lugares donde faltaban originalmente y re-imputa
-  tao_imp$air_temp[missing_air_temp] <- NA
-  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
-  # Define humidity como NA en los lugares donde faltan originalmente y  re-imputa
-  tao_imp$humidity[missing_humidity] <- NA
-  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
-}
-```
-Esa es una aproximación apropiada a la imputación basada en modelos que acabamos de codificar, pero, ¿cómo sabemos que 5 es el número adecuado de iteraciones para ejecutar?.
-
-
-### Detectando convergencia
-
-¿Cuántas iteraciones son necesarias? Cuando los valores imputados no cambian con la nueva iteración, podemos detenernos.
-
-Ahora extenderás nuestro código para calcular las diferencias entre las variables imputadas en las iteraciones subsiguientes. Para hacer esto, usaremos la función de cambio porcentual promedio absoluto (`mapc`), definida de la siguiente manera:
-
-`mapc <- function(a, b) {
-  mean(abs(b - a) / a, na.rm = TRUE)
-}`
-
-`mapc()` es una función que devuelve un solo número que te dice cuánto difiere $b$ de $a$. La usaremos para verificar cuánto cambian las variables imputadas en las iteraciones siguientes. En base a esto, decidiremos cuántas iteraciones son necesarias.
-
-Los indicadores booleanos `missing_air_temp` y `missing_humidity` son usados aquí, al igual que los datos de `tao_imp` inicializados con hot-deck.
-
-
-```{r}
-mapc<- function(a, b) {
-  mean(abs(b - a) / a, na.rm = TRUE)
-}
-
-```
-
-```{r}
-diff_air_temp <- c()
-diff_humidity <- c()
-
-for (i in 1:5) {
-  # Asigna el resultado de la iteración anterior (o inicialización) a prev_iter
-  prev_iter <- tao_imp
-  # Imputa air_temp y humidity en las ubicaciones que originalmente faltaban
-  tao_imp$air_temp[missing_air_temp] <- NA
-  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
-  tao_imp$humidity[missing_humidity] <- NA
-  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
-  # Calcula MAPC para air_temp y humidity y los incluye a la iteración anterior de MAPC
-  diff_air_temp <- c(diff_air_temp, mapc(prev_iter$air_temp, tao_imp$air_temp))
-  diff_humidity <- c(diff_humidity, mapc(prev_iter$humidity, tao_imp$humidity))
-}
-```
-
-¿Cuál es un número suficiente de iteraciones para ejecutar, según las diferencias almacenadas en `diff_air_temp` y `diff_humidity`?
-
-Para responder a esta pregunta, puedemos imprimir los dos vectores en la consola y analizar los números, o trazarlos usando la función proporcionada: simplemente ejecutamos `plot_diffs(diff_air_temp, diff_humidity)` en la consola.
-
-```{r}
-plot_diffs <- function(a, b) {
-  data.frame("mapc" = c(a, b),
-             "Variable" = c(rep("air_temp", length(a)),
-                            rep("humidity", length(b))),
-             "Iteraciones" = c(1:length(a), 1:length(b))) %>% 
-    ggplot(aes(Iteraciones, mapc, color = Variable)) +
-    geom_line(size = 1.5) +
-    ylab("Media del cambio porcentual absoluto (mapc)") +
-    ggtitle("Cambio de las variables imputadas entre las iteraciones.") +
-    theme(legend.position = "bottom")
-}
-```
-
-
-```{r}
-plot_diffs(diff_air_temp, diff_humidity)
-```
-
-### Imputación por regresión logística
-
-Una opción popular para imputar variables binarias es la regresión logística. Desafortunadamente, no hay una función similar a `impute_lm()` que lo haga. Por eso crearemos una función para ello.
-
-Llamemos a la función `impute_logreg()`. Su primer argumento será un data frame `df`, cuyos valores faltantes se han inicializado y solo contiene valores faltantes en la columna a imputar. El segundo argumento será una fórmula para el modelo de regresión logística.
-
-La función hará lo siguiente:
-
-1. Mantendrá las ubicaciones de los valores faltantes.
-2. Construirá el modelo.
-3. Realizará predicciones.
-4. Reemplazará los valores faltantes con las predicciones.
-
-No te preocupes por la línea que crea `imp_var` - esto es solo una forma de extraer el nombre de la columna a imputar de la fórmula.
-
-```{r}
-impute_logreg <- function(df, formula) {
-  # Extrae el nombre de la variable respuesta
-  imp_var <- as.character(formula[2])
-  # Guarda los lugares donde la respuesta es missing
-  missing_imp_var <- is.na(df[imp_var])
-  # Ajusta una regresion del modo logistica
-  logreg_model <- glm(formula, data = df, family = binomial)
-  # Predice la respuesta y la convierte 0s y 1s
-  preds <- predict(logreg_model, type = "response")
-  preds <- ifelse(preds >= 0.5, 1, 0)
-  # Imputa los valores missing con las predicciones
-  df[missing_imp_var, imp_var] <- preds[missing_imp_var]
-  return(df)
-}
-```
-
-La función está completamente operativa y se puede enchufar en el bucle sobre las variables que viste en la sección previa, al igual que `impute_lm()` del paquete `simputation`. Pronto, combinaremos estos dos para imputar tanto variables continuas como binarias. Pero antes, mejoraremos `impute_logreg()` para que reproduzca mejor la variabilidad en los datos imputados.
-
-
-### Crear una distribución condicional
-
-Simplemente llamar a `predict()` en un modelo siempre devolverá el mismo valor para los mismos valores de los predictores. Esto da como resultado una pequeña variabilidad en los datos imputados. Para aumentarla y que la imputación replique la variabilidad de los datos originales, que podemos extraer de la distribución condicional. Esto significa que en lugar de siempre predecir 1 cuando el modelo devuelve una probabilidad mayor que `0.5` , podemos extraer la predicción de una distribución binomial descrita por la probabilidad devuelta por el modelo.
-
-Trabajaremos en el código del ejercicio anterior. La siguiente línea fue eliminada:
-
-`preds <- ifelse(preds >= 0.5, 1, 0)`
-
-Nuestra tarea es llenar su lugar con la creación de una distribución binomial.
-
-```{r}
- impute_logreg <- function(df, formula) {
-  # Extrae el nombre de la variable respuesta
-  imp_var <- as.character(formula[2])
-  # Guarda las posiciones donde la respuesta es missing
-  missing_imp_var <- is.na(df[imp_var])
-  # Ajusta una regresion del modo logistico
-  logreg_model <- glm(formula, data = df, family = binomial)
-  # Predice la respuesta
-  preds <- predict(logreg_model, type = "response")
-  # Toma una muestra de las predicciones de la distribución binomial
-  # preds <- ifelse(preds >= 0.5, 1, 0)
-  preds <- rbinom(length(preds), size = 1, prob = preds)
-  # Imputa los valores missing con las predicciones
-  df[missing_imp_var, imp_var] <- preds[missing_imp_var]
-  return(df)
-}
-```
-
-Crear la distribución condicional hará que la variabilidad de los datos imputados sea mucho parecida a la del conjunto de datos observados originales. Con esta potente función en nuestras manos, ahora podemos diseñar un flujo de imputación basado en modelos que se encargue tanto de variables continuas como binarias. 
-
-### Imputación basada en modelos con varios tipos de variables
-
-En este ejercicio, combinaremos lo que hemos aplicado hasta ahora sobre imputación basada en modelos para imputar diferentes tipos de variables en los datos de `tao`.
-
-Nuestra tarea es iterar sobre las variables como lo hemos hecho previamente e imputar dos variables:
-
-`is_hot`, una nueva variable binaria que se creó a partir de `air_temp`, que es 1 si `air_temp` está a 26 grados o más y 0 de lo contrario; `humidity`, una variable continua con la que ya estamos familiarizados.
-
-Tendremos que utilizar la función de regresión lineal que aprendimos antes, así como la función para la regresión logística.
-
-
-```{r}
-tao$is_hot<-ifelse(tao$air_temp>= 26, 1,0)
-```
-
-
-```{r}
-# Inicializamos los valores missing con hot-deck
-tao_imp <- hotdeck(tao)
-
-# Creamos el indicador booleano desde donde is_hot y humidity son missing
-missing_is_hot <- tao_imp$is_hot_imp
-missing_humidity <- tao_imp$humidity_imp
-
-for (i in 1:3) {
-  # Define is_hot como NA en los lugares donde fue originalmente missing y re-imputa
-  tao_imp$is_hot[missing_is_hot] <- NA
-  tao_imp <- impute_logreg(tao_imp, is_hot ~ sea_surface_temp)
-  # Define humidity como NA en los lugares donde fue originalmente missing y re-imputa
-  tao_imp$humidity[missing_humidity] <- NA
-  tao_imp <- impute_lm(tao_imp, humidity ~ sea_surface_temp + air_temp)
-}
-```
-
-
-
-### Imputación con bosques aleatorios
-
-Un enfoque de aprendizaje automático para la imputación puede ser más preciso y más fácil de implementar en comparación con modelos estadísticos tradicionales. Primero, no requiere que especifiques relaciones entre variables. Además, los modelos de aprendizaje automático como los *random forest* son capaces de descubrir relaciones altamente complejas y no lineales y explotarlas para predecir valores faltantes.
-
-En este ejercicio, usaremos el paquete `missForest`, que construye un bosque aleatorio separado para predecir valores faltantes para cada variable, uno por uno. Llamaremos a la función de imputación sobre los datos de películas, `biopics`, con los que hemos trabajado anteriormente y luego extraeremos los datos completos, así como los errores de imputación estimados.
-
-```{r, message=FALSE, warning=FALSE}
-# leemos nuevamente los datos
-biopics <-read.csv("curso_imputacion/biopics.csv")
-# cargamos la libreria
-library(missForest)
-
-# trasformación de character a factor
-biopics <- type.convert(biopics, as.is=FALSE)
-
-
-# imputa los datos de biopics usando missForest
-imp_res <- missForest(biopics)
-
-# Extrae los datos imputados y revisa por valores missing
-imp_data <- imp_res$ximp
-print(sum(is.na(imp_data)))
-
-```
-
-```{r}
-# Extrae e imprime los errores de imputacion
-imp_err <- imp_res$OOBerror
-print(imp_err)
-```
-
-
-
-
-En el ejercicio anterior hemos extraído los errores de imputación estimados a partir de la salida de `missForest`. Esto te dio dos números:
-
-el error cuadrático medio raíz normalizado (NRMSE) para todas las variables continuas;
-la proporción de entradas falsamente clasificadas (PFC) para todas las variables categóricas.
-
-Sin embargo, podría darse el caso de que el modelo de imputación funcione muy bien para una variable continua y muy mal para otra. Para diagnosticar tales casos, basta con decirle a `missForest` que produzca estimaciones de error por variable. Esto se hace estableciendo el argumento `variablewise` en `TRUE`.
-
-```{r}
-# Imputa los datos de biopics con missForest calculando los errores por variable
-imp_res <- missForest(biopics, variablewise = TRUE)
-
-# Extrae e imprime los errores de imputacion
-per_variable_errors <- imp_res$OOBerror
-print(per_variable_errors)
-```
-
-
-
-
-```{r}
-# Renombra las columnas para incluir el nombre de las variables
-names(per_variable_errors) <- paste(names(biopics), 
-                                    names(per_variable_errors),
-                                    sep = "_")
-
-# Imprime los errores renombrados
-print(per_variable_errors)
-```
-
-
-Observa cómo produjimos una serie de medidas de error en lugar de las dos por defecto que habiamos visto antes. Ahora podemos evaluar la calidad de imputación para cada variable por separado. Esto es útil cuando necesitamos saber cómo se desempeña el modelo para una variable en particular que deseamos modelar o analizar más a fondo.
-
-### Trade-off velocidad-precisión
-
-En este sentido existen dos paramétros que podemos ajustar para influir en el rendimiento de los bosques aleatorios (*random forest*):
-
-. Número de árboles de decisión en cada bosque.
-. Número de variables utilizadas para la división dentro de los árboles de decisión.
-
-Aumentar cada uno de ellos puede mejorar la precisión del modelo de imputación, pero también requerirá más tiempo para ejecutarse. En este ejercicio, exploraremos estas ideas ajustando `missForest()` a los datos de `biopics` dos veces con diferentes configuraciones. Mientras seguimos estos pasos, pongamos atención a los errores que imprimiremos y al tiempo que tomará la ejecución del código.
-
-```{r}
-# Determina el tiempo inicial del primer enfoque
- t <- proc.time()
-
-# Define el numero de arboles a 5 y el numero de variables usadas para dividir en 2
-imp_res <- missForest(biopics, mtry = 2, ntree = 5)
-tiempo1<-proc.time() - t
-# Imprime los resultados de los errores de la imputacion
-print(imp_res$OOBerror)
-```
-
-```{r}
-# Determina el tiempo inicial del segundo enfoque
- t <- proc.time()
-# Define el numero de arboles a 50 y el numero de variables usadas para dividir en 6
-imp_res <- missForest(biopics, mtry = 6, ntree = 50)
-tiempo2<-proc.time() - t
-# Imprime los errores resultantes de la imputacion
-print(imp_res$OOBerror)
-```
-Compara los errores y los tiempos de ejecución de los dos modelos de imputación. ¿Puedes ver una relación? Como dicen, "no hay nada gratuito". Para obtener una imputación más precisa, tuvimos que invertir más tiempo de computación.
-
-```{r}
-tiempo1
-tiempo2
-```
-
-
-##################################################################
-##################################################################
-##################################################################
-
-### La imputación y el modelado en una función
-
-Siempre que realice cualquier análisis o modelado en datos imputados, debe tener en cuenta la incertidumbre de la imputación. Ejecutar un modelo en un conjunto de datos imputados, se ignora el hecho de que la imputación estima los valores faltantes con incertidumbre. Los errores estándar de dicho modelo tienden a ser demasiado pequeños. La solución a esto es la imputación múltiple y una forma de implementarla es mediante bootstrap.
-
-Trabajaremos con los datos `biopics`. El objetivo es utilizar la imputación múltiple mediante bootstrap y la regresión lineal para ver si, en función de los datos disponibles, las películas biográficas con mujeres ganan menos que las de hombres.
-
-Comencemos escribiendo una función que construya una muestra de bootstrap, la impute y ajuste un modelo de regresión lineal.
-
-```{r}
-calc_gender_coef <- function(data, indices) {
-  # Obtener una muestra bootstrap
-  data_boot <- data[indices, ]
-  # Imputa con imputacion kNN
-  data_imp <- kNN(data_boot, k = 5)
-  # Ajusta una regresion lineal
-  linear_model <- lm(earnings ~ sub_sex + sub_type + year, data = data_imp)
-  # Extrae y calcula coeficiente para gender 
-  gender_coefficient <- coef(linear_model)[2]
-  return(gender_coefficient)
-}
-```
-
-La función `calc_gender_coef()` toma los datos y los índices de bootstrap como entradas, y produce nuestra estadística de interés: el impacto del género en las ganancias de la regresión lineal. Ahora podemos usar esta función en el algoritmo de bootstrapping.
-
-### Ejecutando bootstrap
-
-Esta función crea una muestra de bootstrap, la imputa y produce el coeficiente de regresión lineal que describe el impacto de que el tema de la película sea femenino en las ganancias de la película.
-
-En este ejercicio, usarás el paquete `boot` para obtener una distribución de bootstrap de estos coeficientes. La propagación de esta distribución capturará la incertidumbre de la imputación. También verás cómo la distribución de bootstrap difiere de una imputación y regresión.
-
-
-```{r}
-# Carga la libreria boot
-library(boot)
-
-# Ejecuta bootstrap sobre los datos biopics
-boot_results <- boot(biopics, statistic = calc_gender_coef, R = 50)
-
-# Imprime y grafica los resultados del bootstrapping
-print(boot_results)
-```
-```{r}
-plot(boot_results)
-```
-
-
-Si hubieramos ejecutado la imputación `kNN` y el análisis de regresión en los datos de `biopics` solo una vez, habríamos obtenido un coeficiente de `-1.45` para las películas sobre mujeres (llamado "original" en la salida de la consola), lo que sugiere que las películas sobre mujeres ganan menos. Sin embargo, al corregir la incertidumbre de la imputación, hemos obtenido una distribución que cubre tanto valores negativos como positivos.
-
-
-### Bootstrapping para intervalos de confianza
-
-Después de haber generado la distribución del coeficiente del efecto femenino en el último ejercicio, ahora podemos usarla para estimar un intervalo de confianza. Esto permitirá hacer la siguiente evaluación sobre los datos: "Dada la incertidumbre de la imputación, estamos 95% seguros de que el efecto femenino en las ganancias se encuentra entre `a` y `b`", donde `a` y `b` son los límites inferior y superior del intervalo.
-
-En el último ejercicio, ejecutamos la técnica de bootstrapping con `R = 50` réplicas. Sin embargo, en la mayoría de las aplicaciones esto no es suficiente. En este ejercicio, puedes utilizar los `boot_results` que se prepararon utilizando 1000 réplicas. Primero, verás si la distribución de bootstrapping parece normal. Si es así, entonces podrás confiar en la distribución normal para calcular el intervalo de confianza.
-
-```{r,echo=TRUE, eval=FALSE}
-# Ejecuta bootstrap sobre los datos biopics y mide el tiempo de ejecucion
-boot_results <- boot(biopics, statistic = calc_gender_coef, R = 1000)
-```
-
-```{r, echo=FALSE}
-boot_results<-readRDS("boot_results.RDS")
-```
-
-
-```{r}
-# Plot and print boot_results
-plot(boot_results)
-print(boot_results)
-```
-
-
-```{r}
-# Calculate and print confidence interval
-boot_ci <- boot.ci(boot_results, conf = 0.95, type = "norm")
-print(boot_ci)
-```
-
-A pesar de que la tendencia general parece ser una relación negativa, las réplicas de bootstrap muestran que algunas películas con protagonistas femeninas en realidad ganan más. Al tener en cuenta la incertidumbre de la imputación, no se puede estar al 100% seguro acerca de la dirección de esta relación, aunque un análisis único sugiera lo contrario.
-
-### El flujo de MICE: mice - with - pool
-
-El flujo de `MICE` (imputación múltiple por ecuaciones encadenadas) nos permite estimar la incertidumbre de la imputación mediante la imputación de un conjunto de datos varias veces mediante la imputación basada en modelos, mientras se extrae de las distribuciones condicionales. De esta manera, cada conjunto de datos imputados es ligeramente diferente. Luego, se realiza un análisis en cada uno de ellos y se combinan los resultados, obteniendo las cantidades de interés junto con sus intervalos de confianza que reflejan la incertidumbre de la imputación.
-
-En este ejercicio, practicaremos el flujo típico de la imputación con `MICE`: `mice()` - `with()` - `pool()`. Realizaremos un análisis de regresión en los datos de `biopics` para ver qué tipo de ocupación de sujeto, `sub_type`, está asociada con mayores ingresos en las películas.
-
-
-
-```{r}
-# Carga el paquete mice
-library(mice)
-
-# Imputa biopics con mice usando 5 imputaciones
-biopics_multiimp <- mice(biopics, m = 5, seed = 3108)
-
-# Ajusta una regresion lineal para cada set de datos imputados 
-lm_multiimp <- with(biopics_multiimp, lm(earnings ~ year + sub_type))
-
-# Combina las estimaciones por las reglas de Rubin (pool)
-lm_pooled <- pool(lm_multiimp)
-summary(lm_pooled, conf.int = TRUE, conf.level = 0.95)
-```
-
-En este caso, hemos seguido el flujo "mice-with-pool" para imputar, modelar y agrupar los resultados. Ahora, echemos un vistazo a la salida en la consola: algunos `sub_types` tienen un impacto positivo en las ganancias. Sin embargo, al tener en cuenta la incertidumbre de la imputación con una confianza del 95%, nunca estamos seguros de estos efectos, ya que los límites inferiores son negativos. Con una excepción: para `sub_typeAthlete / military`, tanto los límites inferiores como los superiores son positivos. Lo que podemos decir con seguridad es que las películas sobre atletas militares son populares.
-
-
-#### Selección de modelos por defecto
-
-MICE crea un modelo de imputación separado para cada variable en los datos. El tipo de modelo depende del tipo de variable en cuestión. Una forma popular de especificar los tipos de modelos que queremos usar es establecer un modelo predeterminado para cada uno de los cuatro tipos de variables.
-
-Podemos hacer esto usando el argumento defaultMethod en la función `mice()`, que debe ser un vector de longitud 4 que contenga los métodos de imputación predeterminados para:
-
-Variables continuas,
-Variables binarias,
-Variables categóricas (factores no ordenados),
-Variables factoriales (factores ordenados).
-
-En este caso, aprovecharemos la documentación de `mice` para ver la lista de métodos disponibles y seleccionar los deseados para que el algoritmo los use. 
-
-
-```{r}
-# Imputa biopics usando los metodos especificados en la instruccion
-biopics_multiimp <- mice(biopics, m = 20, 
-                         defaultMethod = c("cart", "lda", "pmm", "polr"))
-
-# Imprime biopics_multiimp
-print(biopics_multiimp)
-```
-
-La capacidad de especificar modelos de imputación puede resultar útil cuando se observa que algunos métodos específicos no funcionan bien. Otro factor que influye en cómo funcionan los métodos de imputación es el conjunto de predictores que utilizan. En el siguiente ejercicio, veremos cómo establecer estos predictores.
-
-
-#### Usando una matriz predictora
-
-Se trata de tomar decisiones importantes cuando se utiliza la imputación basada en modelos, como por ejemplo, qué variables deben incluirse como predictores y en qué modelos. En `mice()`, esto se rige por la matriz de predictores y, por defecto, todas las variables se utilizan para imputar todas las demás.
-
-En caso de tener muchas variables en los datos o poco tiempo para realizar una selección adecuada del modelo, puede utilizar la funcionalidad de `mice` para crear una matriz de predictores basada en las correlaciones entre las variables. Esta matriz se puede incorporar a `mice()`. En este ejercicio, practicaremos exactamente esto: primero construiremos una matriz de predictores de modo que cada variable se imputa utilizando las variables más correlacionadas con ella; luego, usará una matriz de predictores con la función de imputación.
-
-```{r}
-# Crea una matriz predictora con correlacion minima de 0.1
-pred_mat <- quickpred(biopics, mincor = 0.1)
-
-# Imputa biopics con mice
-biopics_multiimp <- mice(biopics, 
-                         m = 10, 
-                         predictorMatrix = pred_mat,
-                         seed = 3108)
-
-# Imprime biopics_multiimp
-# print(biopics_multiimp)
-```
-
-
-### Analizando los patrones de datos faltantes
-
-El primer paso para trabajar con datos incompletos es obtener información sobre los patrones de ausencia de datos, y una buena manera de hacerlo es mediante visualizaciones. Comenzarás tu análisis de los datos de `África` empleando el paquete `VIM` para crear dos visualizaciones: el gráfico de agregación y el gráfico de Mosaico. Te dirán cuántos datos faltan, en qué variables y configuraciones, y si podemos decir algo sobre el mecanismo de ausencia de datos. ¡Comencemos con algunas gráficas!
-
-
-
-```{r}
-africa <- read.csv("handing/africa.csv", sep = ";")
-```
-
-
-```{r}
-# carga el paquete VIM
-library(VIM)
-
-
-
-# Crea un grafico de agregación combinada del set de datos africa
-africa %>%
-  aggr(combined = TRUE, numbers = TRUE)
-```
-
-```{r}
-# Crea un grafico spine plot de pais vs trade
-africa %>% 
-  select(country, trade) %>%
-  spineMiss()
-```
-
-
-Observamos que no hay tantos valores faltantes. Además, observe en el gráfico de Mosaico para los datos de `africa` parecen ser MAR - al menos con respecto al PIB y al país, lo que significa que se pueden imputar.
-
-### Imputando e inspeccionando resultados 
-
-Hemos descubierto que hay algunos datos faltantes en el PIB, `gdp_pc`, y en `trade` como porcentaje del PIB. Además, se sospecha que los datos son MAR, por lo que es posible que sean imputados. En este caso, haremos uso de la imputación múltiple del paquete `mice` para imputar los datos de `africa`. Luego, crearemos un gráfico para ` gdp_pc` vs `trade` para ver si los datos imputados no rompen la relación entre estas variables.
-
-
-```{r}
-# Carga mice
-library(mice)
-
-# Imputa africa con mice
-africa_multiimp <- mice(africa, m = 5, defaultMethod = "cart", seed = 3108)
-
-# Crea un stripplot of gdp_pc versus trade
-stripplot(africa_multiimp, gdp_pc ~ trade | .imp, pch = 20, cex = 1)
-```
-
-Se observa que la imputación funciona bien: hay pequeños grupos en los gráficos de dispersión, que probablemente corresponden a diferentes países. Cada punto de datos imputado encaja en uno de los grupos, en lugar de ser un valor atípico en algún lugar entre los grupos. Después de haber realizado la imputación, podemos proceder con el modelado.
-
-
-#### Inferencia con datos imputados
-
-En este último caso, hemos utilizado `mice` para imputar los datos de `africa`. En este, implementaremos los otros dos pasos del flujo de "mice - with - pool" que hemos usado anteriormente. El modelo de interés es una regresión lineal que explica el PIB, `gdp_pc`, con otras variables. Nos interesa particularmente el coeficiente de libertades civiles, `civlib`. ¿Está asociado tener valores más altos en `civlib` en función a un mayor crecimiento económico una vez que incorporamos la incertidumbre de la imputación?
-
-```{r}
-# Ajusta im regresion lineal a cada data set  imputado
-lm_multiimp <- with(africa_multiimp, lm(gdp_pc ~ country + year + trade + infl + civlib))
-
-# Combina las estimaciones por las reglas de Rubin (pool)
-lm_pooled <- pool(lm_multiimp)
-
-# Summarize pooled results
-summary(lm_pooled, conf.int = TRUE, conf.level = 0.9)
-```
-
-
-Basándose en el resumen de los resultados de la regresión agrupada que acabamos de imprimir. Podemos decir que, dado que los límites inferior y superior tienen signos diferentes, no podemos estar seguros de la dirección del efecto. 
 

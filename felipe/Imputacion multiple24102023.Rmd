@@ -1,0 +1,519 @@
+---
+title: "Imputación Múltiple"
+author:  |
+  |
+  |
+  |
+  | Departamento de Metodologías e Innovación Estadística
+  | Subdepartamento de Investigación Estadística
+  | Instituto Nacional de Estadística
+  |
+  |
+  |
+  |
+  |
+  |
+  | Felipe Molina Jaque
+  |
+  | Jefe Subdepartamento: José Bustos
+output:
+  bookdown::pdf_document2: default
+  pdf_document:
+    toc: true
+    toc_depth: 4
+    number_sections: true
+bibliography: biblio.bib
+cls: apa.cls
+header-includes:
+   - \usepackage{eso-pic,graphicx,transparent}
+   
+---
+
+\large
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\AddToShipoutPictureFG{
+  \AtPageCenter{% or \AtTextCenter
+    \makebox[0pt]{\rotatebox[origin=c]{45}{%
+      \scalebox{5}{\texttransparent{0.3}{ }}%
+    }}
+  }
+}
+
+\newpage
+
+
+# Los fundamentos del enfoque de la imputación múltiple
+
+La imputación múltiple (MI, por sus siglas en inglés), introducida por @rubin1988overview, es un enfoque para manejar datos faltantes en estudios estadísticos. El enfoque de Donald B. Rubin para la imputación múltiple, tal como se describe en @rubin2004multiple, es un método para tratar los datos faltantes en los análisis estadísticos donde asume que los datos son "Missing At Random" (MAR), lo que significa que la probabilidad de que un valor sea faltante puede depender de los datos observados, pero no de los datos faltantes en sí. 
+
+Esta técnica permite generar valores razonables para datos que faltan, basándose en la distribución de los datos observados. El principio básico es que la imputación debería reflejar la incertidumbre acerca de los valores faltantes, generando varias versiones imputadas diferentes, lo que lleva a la "multiplicidad" en la imputación [@van2018flexible]. Un manejo inadecuado de los datos faltantes en un análisis estadístico puede conducir a estimaciones sesgadas y/o ineficientes de parámetros como las medias o los coeficientes de regresión, y errores estándar sesgados que resultan en intervalos de confianza y pruebas de significancia incorrectas. En todos los análisis estadísticos, se hacen algunas suposiciones sobre los datos faltantes. 
+
+El marco de trabajo de @little2002bayes se utiliza a menudo para clasificar los datos faltantes como: (i) faltantes completamente al azar (MCAR, por sus siglas en inglés - la probabilidad de que los datos falten no depende de los datos observados o no observados), (ii) faltantes al azar (MAR - la probabilidad de que los datos falten no depende de los datos no observados, condicionados a los datos observados) o (iii) faltantes no al azar (MNAR - la probabilidad de que los datos falten sí depende de los datos no observados, condicionados a los datos observados). Por ejemplo, en una encuesta de hogares, los datos acerca del ingreso son MAR si es más probable que las personas con mayores años de estudio declaren en dicha variable (y los años de estudio se incluye en el análisis), pero son MNAR si las personas con ingresos altos son más propensas a no declarar sus ingresos en la encuesta que otras personas con iguales años de escolaridad. No es posible distinguir entre MAR y MNAR solo a partir de los datos observados, aunque la suposición de MAR puede hacerse más plausible recolectando más variables explicativas e incluyéndolas en el análisis.
+
+Bajo el paradigma de imputación múltiple, la idea es generar múltiples conjuntos de datos donde cada valor faltante para un conjunto de datos $Y_{\text{mis}}$ es reemplazado con un conjunto de valores plausibles, creando así múltiples versiones completas del conjunto de datos. Supongamos se generan $M$ conjuntos de datos posibles, los resultados de estos $M$ análisis se combinan en una única estimación y una única medida de incertidumbre. Este enfoque tiene la ventaja de reflejar adecuadamente la incertidumbre sobre los valores faltantes en las estimaciones finales, lo que puede dar lugar a inferencias más precisas y confiables en presencia de datos faltantes. En este método, la incertidumbre de la imputación se tiene en cuenta mediante la creación de estos múltiples conjuntos de datos. El proceso de imputación múltiple puede dividirse en tres fases:
+
+- Imputación: Durante la fase de imputación, se generan $M$ conjuntos de datos completos, donde M es el número de imputaciones. Cada conjunto de datos se crea reemplazando los valores faltantes con estimaciones basadas en un modelo de imputación. Este modelo se ajusta a los datos observados y también incorpora la variabilidad aleatoria, lo que significa que las imputaciones son diferentes en cada uno de los $M$ conjuntos de datos. Es decir, para un conjunto de datos con valores faltantes, se generan $M$ imputaciones para cada valor faltante. Por lo tanto, a partir de un conjunto de datos original con datos faltantes, se generan $M$ conjuntos de datos completos. Si se denota la $m$-ésima imputación para el $i$-ésimo valor faltante como $y_{i,m}$, entonces, para cada $i$, se genera $y_{i,1}, y_{i,2}, \ldots, y_{i,M}$.
+
+- Análisis: En la fase de análisis, se lleva a cabo el análisis estadístico de interés en cada uno de los M conjuntos de datos completos como si fueran datos completos sin faltantes.  Cada uno de estos $M$ conjuntos de datos se analiza por separado utilizando el análisis estadístico completo de los datos. Si se denota el estimador de interés como $\theta$, entonces para cada conjunto de datos completado se obtiene un estimado $\hat{\theta}_m$ para $m = 1, 2, \ldots, M$. Esto resulta en $M$ conjuntos de estimaciones y estadísticas de prueba.
+
+- Combinación: En la fase de combinación, las $M$ estimaciones y estadísticas de prueba de los conjuntos de datos imputados se combinan para producir una única estimación y estadística de prueba. La combinación tiene en cuenta tanto la variabilidad dentro de cada conjunto de datos imputados (debido a la variabilidad de muestreo) como la variabilidad entre los conjuntos de datos imputados (debido a la incertidumbre en el proceso de imputación). La estimación final de $\theta$ se calcula como el promedio de las $M$ estimaciones, es decir, $\hat{\theta} = \frac{1}{M}\sum_{m=1}^{M}\hat{\theta}_j$. 
+
+# Implementación general de los métodos de imputación múltiple
+
+Si $\theta$ es una cantidad de interés a calcular de una población estadística, ya sea una media, total poblacional, coeficiente de regresión, etc. Notar que $\theta$ es una característica de la población estadística y no depende de características de un determinado diseño. Dado que esta cantidad $\theta$ solo es posible calcularla con la población completa, se suele calcular un estimador $\hat{\theta}$ del parámetro poblacional. 
+
+El objetivo es encontrar un estimador insesgado de $\theta$ tal que la esperanza de $\hat{\theta}$ sobre todas las muestras posibles de los datos completos $Y$ sea igual al parámetro poblacional deseado, es decir, se busca que $E(\hat{\theta}|Y) = \theta$. La incertidumbre acerca de la estimación $\hat{\theta}$ depende acerca del conocimiento que se tiene acerca del vector $Y_{\text{mis}}$. En ese sentido, si fuese posible generar valores para $Y_{\text{mis}}$ de manera exacta, entonces la incertidumbre acerca de la estimación $\hat{\theta}$ se reduciría o bien no existiría incertidumbre acerca de la estimación generada para el parámetro poblacional.  
+
+Sea $P(\theta|Y_\text{obs})$ la distribución a posteriori de $\theta$, esta distribución puede ser descompuesta integrando sobre la distribución conjunta del vector $\left(Y_\text{obs}, Y_\text{mis}\right)$, es decir:
+
+\begin{align}
+P(\theta|Y_{\text{obs}}) &= \int P(\theta, Y_{\text{mis}}|Y_{\text{obs}}) dY_{\text{mis}} \\
+&= \int P(\theta|Y_{\text{obs}}, Y_{\text{mis}}) P(Y_{\text{mis}}|Y_{\text{obs}}) dY_{\text{mis}} (\#eq:fm1) \\
+&=  \lim_{{M \to \infty}} \frac{1}{M} \sum_{m=1}^{M} P(\theta|Y_{\text{obs}}, Y^{(m)}_{\text{mis}}) \\
+&\approx \frac{1}{M} \sum_{m=1}^{M} P(\theta|Y_{\text{obs}}, Y^{(m)}_{\text{mis}}) 
+\end{align}
+
+Donde $M > 1$ y $Y^{(m)}_\text{mis}$ es obtenida como una realización de la distribución de  $P(Y_{\text{mis}}|Y_{\text{obs}})$ para $m = 1,...,M$.
+
+Dado que se desea hacer inferencia sobre el parámetro $\theta$, es de interés conocer la distribución de $P(\theta|Y_\text{obs})$ pues utiliza la información que se tiene, por otra parte $P(\theta|Y_\text{obs},Y_\text{mis})$ es la distribución hipotética del parámetro sobre los datos completos y $P(Y_\text{mis}|Y_\text{obs})$ es la distribución de los valores perdidos dados los valores observados.
+
+De la ecuación \@ref(eq:fm1), seria posible obtener $M$ imputaciones $\dot{Y}_\text{mis}$ a partir de la distribución $P(Y_\text{mis}|Y_\text{obs})$, con ello, se podria calcular la cantidad $\theta$ a partir de la distribución de $P(\theta|Y_\text{obs},\dot{Y}_\text{mis})$. @van2018flexible muestran que la media posteriori de $P(\theta|Y_\text{obs})$ es igual a 
+
+\begin{equation}
+E(\theta|Y_\text{obs}) = E(E[\theta|Y_\text{obs},Y_\text{mis}]|Y_\text{obs}) (\#eq:fm2)
+\end{equation}
+En otras palabras, la media posteriori de $\theta$ bajo repetidas imputaciones de los datos. 
+
+Suponga que $\hat{\theta}_m$ es la estimación usando la $m$-ésima imputación, la estimación de las $M$ estimaciones combinadas es igual a 
+
+\begin{equation}
+\bar{\theta} = \frac{1}{M}\sum_{m = 1}^M \hat{\theta}_m (\#eq:fm3)
+\end{equation}
+
+En un caso multivariado, es posible que $\bar{\theta}_m$ contenga $k$ parámetros y por tanto sea un vector de dimensión $k\times 1$.
+La varianza de la distribución a posteriori $P(\theta|Y_\text{obs})$ se puede escribir como la suma de dos componentes, esto es:
+
+\begin{equation} 
+V(\theta|Y_\text{obs}) = E(V(\theta|Y_\text{obs},Y_\text{mis})|Y_\text{obs}) + V(E(\theta|Y_\text{obs},Y_\text{mis})|Y_\text{obs}) (\#eq:fm4)
+\end{equation}
+
+La primera componente de \@ref(eq:fm4) puede interpretarse como la media de las repetidas imputaciones a posteriori de la varianza de $\theta$ (La cuál será denominada como intra-varianza) mientras que la segunda componente es la varianza entre las medias de $\theta$ estimadas con la distribución a posteriori (la cuál será llamada entre-varianza). 
+
+Si se denota $\bar{U}_\infty$ y $B_\infty$ como la intra y entre varianzas cuando $M \to \infty$ entonces se tiene que $T_\infty = \bar{U}_\infty + B_\infty$ corresponde a la varianza posteriori de $\theta$. Cuando $M$ es finito, es posible calcular la media de las varianzas de las imputaciones como
+
+\begin{equation}
+\bar{U} = \frac{1}{M}\sum_{m = 1}^{M}\bar{U}_m (\#eq:fm5)
+\end{equation}
+
+donde $\bar{U}_m$ corresponde a la matriz de varianzas covarianzas de $\hat{\theta}_m$ obtenida de la $m$-ésima imputación. La estimación insesgada de las varianzas entre las $M$ estimaciones realizadas está dada por
+
+\begin{equation}
+B = \frac{1}{M-1}\sum_{m = 1}^M(\hat{\theta}_m-\bar{\theta})(\hat{\theta}_m-\bar{\theta})' (\#eq:fm6)
+\end{equation}
+
+Para calcular la varianza total $T$ cuando $M$ es finito, es necesario incorporar el hecho de que $\bar{\theta}$ es estimado usando un número de imputaciones finita. @rubin2004multiple muestra que dicho factor corresponde a $\frac{B}{M}$. Por tanto, la varianza total $T$ de la estimación $\bar{\theta}$ a travéz de las $M$ imputaciones puede ser escrita como
+
+\begin{align*}
+T &= \bar{U} + B + \frac{B}{M} \\
+& = \bar{U} + \left(1 + \frac{1}{M}\right)B
+\end{align*}
+
+@steele2010inference investigaron alternativas para obtener estimaciones de $T$ utilizando mezclas de distribuciones normales. En este escenario, cuando existe normalidad multivariante y $M$ no es grande, estos métodos producen estimaciones ligeramente más eficientes de T acorde a los autores.
+
+## Consideraciones técnicas en la aplicación de los métodos de imputación
+
+Considerando que es necesario realizar inferencia sobre la estimación puntual $\bar{\theta}$ y la varianza estimada definida como $T$, diversos autores [@rubin1988overview; @van2018flexible; @molenberghs2014handbook] proponen utilizar la distribución $t$. 
+
+@van2018flexible menciona que la inferencia de un solo parámetro se aplica cuando $k = 1$, o bien si $k > 1$ pero además la prueba se repite para cada uno de los $k$ componentes en el parámetro. Dado que la varianza total $T$ es desconocida, $\bar{\theta}$ sigue una distribución $t$ en lugar de la normal. Las pruebas univariadas para la imputación se basan en la aproximación:
+
+\begin{equation}
+\frac{\theta-\bar{\theta}}{\sqrt{T}} \sim t_\nu 
+\end{equation}
+
+donde $t_\nu$ es una distribución t-student con $\nu$ grados de libertad. Con lo anterior es posible construir un intervalo de $(1-\alpha)100\%$ para $\bar{\theta}$ definido en la siguiente ecuación
+
+\begin{equation}
+\bar{\theta} \pm t_{\nu,1-\alpha/2} \sqrt{T}
+\end{equation}
+
+donde $t_{\nu,1-\alpha/2}$ corresponde al cuantil de probabilidad $1-\alpha/2$ de $t_\nu$. 
+Suponga se desea testear la hipotesis nula $\theta = \theta_0$ para un valor en específico de $\theta_0$. El valor-p del test se puede calcular como
+
+\begin{equation}
+P_s = \text{Pr} \left[ F_{1,\nu} > \frac{(\theta_0-\bar{\theta})^2}{T} \right]
+\end{equation}
+
+donde $F_{1,\nu}$ es una distribución ($F$) Fisher-Snedecor con 1 y $\nu$ grados de libertad.
+
+Utilizando una aproximación estándar de tipo Satterthwaite, @rubin1988overview calculó los grados de libertad de la distribución de $\bar{\theta}$ dado los $M$ conjunto de datos imputados como:
+
+\begin{equation} 
+\nu = (M-1)\left[1 + \frac{\bar{U}}{(1 + \frac{1}{M})B} \right]^2 (\#eq:fm7)
+\end{equation}
+
+La ecuacion anterior puede ser reescrita como
+
+\begin{equation} 
+\nu = (M-1)\left[1 + \frac{1}{r_M} \right]^2 (\#eq:fm8)
+\end{equation} 
+
+donde $r_M = \frac{(1+m^{-1})B}{\bar{U}}$ es conocida como el incremento de varianza relativa (RVI por sus siglas en inglés) debido a los valores faltantes, considerando que $\bar{U}$ representa la varianza de la estimación $\bar{\theta}$ cuando no existe variación entre los valores estimados $\hat{\theta}_m$, en cuyo caso $B = 0$.
+
+Por otra parte, para $\theta$ se puede definir el ratio
+
+\begin{equation}
+\lambda_M = \frac{(1+m^{-1})B}{T} (\#eq:fm9)
+\end{equation}
+
+el cuál puede ser interpretado como la proporción de varianza que se puede atribuir a la información perdida. 
+
+Si $\lambda_M = 0$, la información perdida no añade variación extra a la variación del muestreo, lo cuál ocurre excepcionalmente solo si se recrea de manera perfecta dicha información perdida. Por contraparte si $\lambda_M = 1$ toda la variabilidad es causada por la información faltante. Si $\lambda_M > 0.5$ la influencia del modelo de imputación en el resultado final es mayor que el modelo considerando los datos completos [@van2018flexible]. Notar que $r_M = \lambda_M/(1-\lambda_M)$.
+
+Una cantidad estrechamente relacionada con $\lambda_M$ se denomina "fracción de información faltante" (FMI, por sus siglas en inglés), puede ser calculada comparando la "información" en la densidad posteriori ($t$) aproximada, definida como el negativo de la segunda derivada de la densidad log-posterior, con la de la densidad posteriori hipotética de los datos completos, dando como resultado [@rubin1988overview]:
+
+\begin{equation}
+\gamma_M = \frac{r_M + \frac{2}{\nu+3}}{1 + r_M}  (\#eq:fm10)
+\end{equation}
+
+Es fácil ver que $\gamma_M \to r_M/(1 + r_M) = \lambda_M$ cuando $M \to \infty$. Esto permite observar que el efecto de los datos faltantes es una combinación de la actual cantidad de información perdida y el grado con el cuál aquella información de los datos incompletos contribuye a la estimación de interes mediante el modelo de imputación.
+
+@barnard1999miscellanea muestran que la ecuación \@ref(eq:fm8) puede producir valores en los grados de libertad que son mayores al tamaño muestral en los datos completos cuando la muestra es pequeña. Debido a esto, desarrollaron una adaptación para tamaños de muestras pequeñas teniendo en cuenta dicho problema. Se define $\nu_{old}$ como los grados de libertad de la ecuación \@ref(eq:fm8) y $\nu_{com}$ los grados de libertad de $\bar{\theta}$ cuando se tiene los datos completos sin valores perdidos. En este caso, si se tienen $k$ parámetros para un tamaño muestral de $n$, entonces $\nu_{com} = n-k$. Los grados de libertad de los datos observados que tienen en cuenta la información faltante es
+
+\begin{equation}
+\nu_{obs} = \frac{\nu_{com} + 1}{\nu_{com} + 3}\nu_{com}(1-\lambda)
+\end{equation}
+
+Los grados de libertad ajustados que se utilizarán para las pruebas en imputación múltiple se pueden escribir de manera concisa como 
+
+\begin{equation}
+\nu = \frac{\nu_{old}\nu_{obs}}{\nu_{old} + \nu_{obs}} (\#eq:fm10p2)
+\end{equation}
+
+@van2018flexible señala que para la cantidad de la ecuación \@ref(eq:fm10p2) siempre se tiene que $\nu \leq \nu_{com}$. Si $\nu_{com} = \infty$ entonces \@ref(eq:fm10p2) se reduce a \@ref(eq:fm8).
+
+## Número de imputaciones a realizar
+
+La imputación múltiple es una técnica de simulación por lo que $\bar{\theta}$ y su varianza total estimada $T$ están sujetas a errores de simulación. En ese sentido, la fórmula dada por
+
+\begin{equation}
+T_m = \left( 1 + \frac{\gamma_0}{m}\right)T_\infty (\#eq:fm11)
+\end{equation}
+
+es la relación entre la varianza del parámetro estimado en un escenario con un número finito de imputaciones ($T_m$) y la varianza del parámetro estimado en un escenario con un número infinito de imputaciones ($T_\infty$).
+
+Aquí, $m$ representa el número de imputaciones múltiples y $\gamma_0$ es la fracción de información perdida. Esta cantidad es equivalente a la proporción esperada de observaciones que faltan en el caso de que $Y$ sea una variable que no tenga covariables asociadas. Sin embargo, esta proporción suele ser menor si existen covariables que pueden predecir el valor de $Y$. Cuando $m$ tiende a infinito, la varianza del estimador tiende a $T_\infty$, es decir, se reduce la varianza debido al error de simulación. Sin embargo, en la práctica, rara vez se alcanza el límite de $m = \infty$ utilizando en su lugar un número finito de imputaciones.
+
+La cercanía de $T_m$ a $T_\infty$ es una medida de qué tan bien se ha estimado la varianza del parámetro. En teoría, cuanto mayor sea $m$, más cercano será $T_m$ a $T_\infty$, lo que significa que la varianza estimada es más precisa. Sin embargo, aumentar el número de imputaciones también aumenta la carga computacional, por lo que se debe encontrar un equilibrio. Según @bodner2008improves, en la mayoría de los escenarios prácticos, se pueden obtener buenos resultados con solo 20-40 imputaciones múltiples.
+
+El intervalo de confianza para la estimación depende tanto de $\nu$ como de $m$. @royston2004multiple sugiere un criterio para determinar $m$ basado en el coeficiente de confianza $t_\nu\sqrt{T}$, y propone que el coeficiente de variación de $\log{(t_\nu\sqrt{T})}$ debería ser inferior a $0.05$. Este criterio tiene el efecto de reducir el intervalo de confianza en un $10\%$, lo que implica que se necesitarían al menos $m > 20$ imputaciones.
+
+En su estudio, @bodner2008improves examinó la variabilidad de tres medidas específicas con diferentes números de imputaciones múltiples ($m$): el ancho del intervalo de confianza del 95%, el valor p y $\gamma_0$ (la proporción real de información perdida). En este contexto, Bodner estableció un criterio para seleccionar $m$ tal que el ancho de un intervalo de confianza del $95\%$ no supere el $10\%$ de su valor verdadero. Para $\gamma_0 = (0.05,0.1,0.2,0.3,0.5,0.7,0.9)$ recomendó valores $m = (3,6,12,24,59,114,258)$.
+
+
+## Algoritmo de imputación bayesiana
+
+Sea $\theta$ el parámetro del modelo de datos completos $f(Y|\theta)$. Desde una perspectiva bayesiana, se necesita una distribución a priori para $\theta$, $\pi(\theta)$, para completar la especificación del modelo. Formular directamente $f(Y_{\text{mis}}|Y_{\text{obs}})$ puede ser complejo acorde a @he2012multiple pues $\theta$ no está incluido en la distribución predictiva posteriori. Sin embargo, el algoritmo de imputación tiene que involucrar a $\theta$ de ciertas maneras. Note que
+
+\begin{equation}
+f(Y_{\text{mis}}|Y_{\text{obs}}) = \int f(Y_{\text{mis}}, \theta|Y_{\text{obs}})d\theta = \int f(Y_{\text{mis}}|Y_{\text{obs}}, \theta)f(\theta|Y_{\text{obs}})d\theta.
+\end{equation}
+
+La ecuación anterior sugiere que, condicionalmente a una extracción de $\theta$, $Y_{\text{mis}}$ puede extraerse de $f(Y_{\text{mis}}|Y_{\text{obs}}, \theta)$. Esta estrategia puede esbozarse de manera algorítmica. En @he2012multiple esbosan el algoritmo de imputación bayesiana directa (DB) de la siguiente manera:
+\begin{enumerate}
+\item Derivar la distribución posterior de datos observados, $f(\theta|Y_{\text{obs}})$, bajo una distribución a priori $\pi(\theta)$.
+\item Extraer un valor del parámetro $\theta^{(m)}$ de $f(\theta|Y_{\text{obs}})$.
+\item Extrer valores de datos faltantes de la distribución condicional: $Y^{(m)}_{\text{mis}} \sim f(Y_{\text{mis}}|Y_{\text{obs}}, \theta^{(m)})$.
+\item Repetir 2 y 3 independientemente $M$ veces para crear conjuntos de datos completos múltiples $(Y^{(m)}_{\text{mis}}, Y_{\text{obs}})$ $(m = 1, \ldots, M)$.
+\end{enumerate}
+
+Dado que derivar $f(\theta|Y_{\text{obs}})$ y extraer parámetros de ella puede ser difícil si el patrón de datos faltantes no es simple o el modelo de datos completos es complicado, es posible en su lugar emplear un algoritmo de imputación bayesiana más general llamada algoritmo de datos aumentados (DA por sus siglas en inglés).
+
+### Algoritmo de datos aumentados
+
+El algoritmo datos aumentados (DA) considera la distribución posteriori conjunta de $\theta$ y $Y_{\text{mis}}$ condicional en $Y_{\text{obs}}$, $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$, y obtiene muestras de forma iterativa [@tanner1987calculation]. Notar que 
+
+\begin{equation}
+P(\theta, Y_{\text{mis}} | Y_{\text{obs}}) = P(\theta | Y_{\text{mis}}, Y_{\text{obs}}) P(Y_{\text{mis}} | Y_{\text{obs}}) = P(Y_{\text{mis}} | \theta, Y_{\text{obs}}) P(\theta | Y_{\text{obs}})
+\end{equation}
+
+En segundo lugar si se considera $Y_{\text{mis}}$ también como un "parámetro", es posible extraer $P(\theta, Y_{\text{mis}} | Y_{\text{obs}})$ iterando entre el muestreo de $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ mediante gibss sampling. Estas muestras constituyen iteraciones de cadenas de Markov Monte Carlo (MCMC). Cuando las muestras de ambos $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ y $P(Y_{\text{mis}} | Y_{\text{obs}}, \theta)$ convergen, también se obtienen muestras de $Y_{\text{mis}}$ que convergen a la distribución predictiva posteriori, $P(Y_{\text{mis}} | Y_{\text{obs}})$, creando así múltiples imputaciones [@he2021multiple].
+
+La estrategia DA se puede esbozar de forma algorítmica de la siguiente manera:
+
+\begin{enumerate}
+
+\item Derivar la distribución posterior de datos completos, $P(\theta | Y) = P(\theta | Y_{\text{obs}}, Y_{\text{mis}})$, bajo un prior $\pi(\theta)$.
+
+\item Comenzar con una estimación o suposición del parámetro $\theta$, digamos $\theta^*(t)$ (donde $t = 0$ en la primera iteración).
+
+\item Extraer valores de datos faltantes de la distribución condicional: $Y^*(t)_{\text{mis}} \sim P(Y_{\text{mis}} | Y_{\text{obs}}, \theta^*(t))$ (el paso I, para "Imputación").
+
+\item Extraer un nuevo valor del parámetro de su distribución posterior de datos completos, "insertando" el nuevo valor extraído de $Y_{\text{mis}}$: $\theta^*(t+1) \sim P(\theta | Y_{\text{obs}}, Y^*(t)_{\text{mis}})$ (el paso P, para "Posterior").
+
+\item Repetir los Pasos 3 y 4 (el paso I y el paso P) hasta que se alcance la convergencia para $(\theta^*(t), Y^*(t)_{\text{mis}})$, digamos en $t = T$. Las muestras de $Y^*(T)_{\text{mis}}$ constituyen el m-ésimo conjunto de imputaciones, $Y^{(m)}_{\text{mis}}$.
+
+\item Repetir los Pasos 2 al 5 de forma independiente $M$ veces para crear múltiples conjuntos de imputaciones.
+
+\end{enumerate}
+
+Una ventaja del algoritmo DA sobre el algoritmo DB es que trabajar en $P(\theta | Y_{\text{mis}}, Y_{\text{obs}})$ suele ser más fácil que $P(\theta | Y_{\text{obs}})$ porque el primero es condicional en datos completos y no está limitado por el patrón de datos faltantes. Se debe tener en cuenta que, a diferencia del algoritmo DB, el algoritmo DA requiere iteraciones entre el paso I y el paso P. Cuando $\theta$ contiene múltiples componentes, el paso P del algoritmo DA puede constar de múltiples pasos, extrayendo cada parámetro condicional en otros parámetros y valores faltantes como en el Gibss sampling [@he2021multiple].
+
+## Imputación basada en Regresión lineal con Data Augmentation
+
+La regresión lineal es frecuentemente el modelo preferido para la imputación de variables continuas que siguen una distribución normal.
+
+\begin{equation}
+Y_\text{obs}|X;\boldsymbol{\beta} \sim \text{N}\left(X\boldsymbol{\beta}, \sigma^2 \right)  (\#eq:fm12)
+\end{equation}
+
+Donde, $\hat{\beta}$ es el estimador del parámetro (o un vector de tamaño $k$) del modelo que se ajusta a las observaciones de datos $Y_\text{obs}$. Asimismo, $\mathbf{V}$ representa la matriz de varianzas-covarianzas de $\hat{\beta}$, y $\hat{\sigma}$ es la estimación de la varianza del modelo ajustado.
+
+Para poder realizar la imputación, es necesario obtener los parámetros de imputación $\sigma^*$ y $\beta^*$ de la distribución a posteriori de $\sigma$ y $\beta$. Estos parámetros de imputación se utilizan para generar valores imputados que respeten la incertidumbre en las estimaciones de los parámetros de la regresión.
+
+En la imputación múltiple, estos valores imputados se generan para cada conjunto de datos, y luego los resultados de cada conjunto de datos imputado se combinan para generar una estimación final que tiene en cuenta tanto la variabilidad dentro de los conjuntos de datos imputados como la variabilidad entre ellos.
+
+Esto asegura que la estimación final refleje tanto la incertidumbre en la estimación de los parámetros de la regresión como la incertidumbre debido a los valores faltantes.
+
+1) Se genera $\sigma^*$ como
+
+\begin{equation}
+\sigma^* = \hat{\sigma}\sqrt{(n_\text{obs}-k)/\mathrm{g}} (\#eq:fm13)
+\end{equation}
+
+donde $\mathrm{g}$ es una realización aleatoria de una distribución $\chi^2_{n_\text{obs}-k}$.
+
+2) se genera $\boldsymbol{\beta}^*$ como
+
+\begin{equation}
+\boldsymbol{\beta}^* = \hat{\boldsymbol{\beta}} + \frac{\sigma^*}{\hat{\sigma}}\mathbf{u_1}V^\frac{1}{2} (\#eq:fm14)
+\end{equation}
+
+donde $\mathbf{u_1}$ es una fila de $k$ realizaciones independientes de una distribución normal estandar y $V^\frac{1}{2}$ es la descomposición de cholesky de $\mathbf{V}$
+
+El valor imputado $y_i^*$ para cada observación faltante $y_i$ se obtiene como
+
+\begin{equation}
+y_i^* = \boldsymbol{\beta}\mathbf{x}_i + u_{2i}\sigma^* (\#eq:fm15)
+\end{equation}
+
+donde $u_{2i}$ es una realización aleatoria proveniente de una distribución normal estándar.
+
+## Imputación multivariada para datos continuos
+
+### Modelos multivariados utilizando la distribución normal
+
+Si se asume que $Y = (Y_1, Y_2)$ sigue una distribución normal bivariada. La distribución condicional de $Y_i$ dado $Y_j$ (donde $i, j \in \{1, 2\}$ y $j \neq i$) es un modelo de regresión lineal normal univariado:
+
+\begin{equation}
+f(Y_1|Y_2) = \mathcal{N}(\beta_{01} + \beta_{11}Y_2, \tau^2_1), (\#eq:fmnmv1)
+\end{equation}
+\begin{equation}
+f(Y_2|Y_1) = \mathcal{N}(\beta_{02} + \beta_{12}Y_1, \tau^2_2). (\#eq:fmnmv2)
+\end{equation}
+
+Suponga que $\mu = (\mu_1, \mu_2)^t$, \(\Sigma = \begin{pmatrix}
+\sigma^2_1 & \sigma_{12} \\
+\sigma_{12} & \sigma^2_2
+\end{pmatrix} \), y $\theta = (\mu, \Sigma)$. En los modelos de regresión lineal \@ref(eq:fmnmv1) y \@ref(eq:fmnmv2), los parámetros ($\beta$'s y $\tau^2$'s) son reparametrizaciones de $\theta$:
+\[
+\beta_{01} = \mu_1 - \beta_{11}\mu_2, \quad \beta_{11} = \frac{\sigma_{12}}{\sigma^2_2}, \quad \tau^2_1 = \sigma^2_1 - \frac{\sigma^2_{12}}{\sigma^2_2},
+\]
+\[
+\beta_{02} = \mu_2 - \beta_{12}\mu_1, \quad \beta_{12} = \frac{\sigma_{12}}{\sigma^2_1}, \quad \tau^2_2 = \sigma^2_2 - \frac{\sigma^2_{12}}{\sigma^2_1}.
+\]
+
+Después de imponer una distribución a priori plana para $\theta$ tal como $\pi(\mu, \Sigma) \propto |\Sigma|^{-1}$, los componentes principales del algoritmo de imputación pueden esbozarse de la siguiente manera:
+
+
+1. Comenzar con una estimación o suposición del parámetro $\theta$, digamos $\theta^*(t)$ (donde $t = 0$ en la 1ra iteración). Reparametrizar $\theta^*(t)$ a $\beta^*(t)$'s y $\tau^{2*}(t)$'s usando la fórmula anterior.
+
+2. Paso-I: para los casos faltantes en $Y_1$ donde sus valores se observan en $Y_2$, imputarlos usando el modelo \@ref(eq:fmnmv1) con los parámetros extraídos (es decir, $\beta^*(t)_{01}, \beta^*(t)_{11}, \tau^{2*}(t)_1$) del Paso 1; imputar los casos faltantes en $Y_2$ de manera similar usando el modelo \@ref(eq:fmnmv2); si ambas variables faltan, pueden generarse a partir de $\mathcal{N}_2(\mu^*(t), \Sigma^*(t))$.
+
+3. Paso-P: una vez que $Y_1$ y $Y_2$ se completan a partir del Paso 2, extraer $\mu^*(t+1)$ y $\Sigma^*(t+1)$ como: $\frac{\Sigma^*(t+1)}{(n - 1)} \sim \text{Inverse-Wishart}(S(t+1), n - 1)$, y $\mu^*(t+1) \sim \mathcal{N}_2(Y^{(t+1)}, \frac{\Sigma^*(t+1)}{n})$, donde $Y^{(t+1)}$ y $S(t+1)$ son la media muestral y la matriz de covarianza a partir de los datos completados $Y^{(t+1)}$, respectivamente; transformar $\theta^*(t+1)$ a $\beta^*(t+1)$'s y $\tau^{2*}(t+1)$'s.
+
+4. Repetir los Pasos 2 y 3 hasta que la convergencia para $(\theta^*(t), Y^*(t)_{\text{mis}})$ se satisfaga en $t = T$. Las extracciones de $Y^*(T)_{\text{mis}}$ constituyen el primer ( $m = 1$ ) conjunto de imputaciones, $Y^{(m)}_{\text{mis}}$.
+
+5. Repetir los Pasos 1 a 4 de forma independiente $M$ veces.
+
+bajo un modelo normal bivariado se puede generalizar lo anterior a un modelo normal multivariado con $p$-dimensiones. Primero notar que si se divide la variable $Y$ $p$-variada en dos partes, $Y_1$ y $Y_2$, con dimensiones $p_1$ y $p_2$ donde $p = p_1 + p_2$, entonces \(Y = (Y_1, Y_2)^t \sim \mathcal{N}((\mu_1, \mu_2)^t,
+\begin{pmatrix}
+\Sigma_{11} & \Sigma_{12} \\
+\Sigma_{21} & \Sigma_{22}
+\end{pmatrix}
+) \), donde $\mu_1$ y $\mu_2$ son vectores de $p_1 \times 1$ y $p_2 \times 1$, respectivamente, y $\Sigma_{ij}$ son matrices de covarianza con dimensiones $p_i \times p_j$ para $i, j = 1, 2$. La distribución condicional de $Y_2$ dado $Y_1$ es una distribución normal $p_2$-variada: $f(Y_2|Y_1) \sim \mathcal{N}(\mu_{2|1}, \Sigma_{2|1})$, donde $\mu_{2|1} = \mu_2 + \Sigma_{21}\Sigma^{-1}_{11} (Y_1 - \mu_1)$ es la media predicha a partir de la regresión lineal $p_2$-variada de $Y_2$ en $Y_1$, y $\Sigma_{2|1} = \Sigma_{22} - \Sigma_{21}\Sigma^{-1}_{11}\Sigma_{12}$ es la matriz de covarianza residual de esa regresión.
+
+Para llevar a cabo JM para más de dos variables, es necesario dividir a los sujetos en grupos según qué variables tienen valores faltantes. Luego, para el grupo con $Y_2$-variables faltantes y $Y_1$-variables observadas, sus imputaciones pueden generarse usando el modelo de regresión lineal multivariado caracterizado por $f(Y_2|Y_1)$ como se describió anteriormente. El Paso-I del algoritmo DA pasa por todos estos grupos y luego es seguido por el Paso-P.
+
+
+### Modelos multivariados para datos no normales y mezcla de distribuciones
+
+Para variables continuas multivariadas que muestran una fuerte asimetría y/o colas pesadas, una estrategia JM conveniente es aplicar algunas transformaciones para hacer que las suposiciones de normalidad sean más plausibles y luego llevar a cabo la imputación del modelo normal multivariado en la escala transformada.
+
+Otra estrategia efectiva para datos continuos no normales es utilizar modelos de mezcla. Los modelos de mezcla permiten un modelado conjunto flexible, ya que pueden reflejar automáticamente estructuras distribucionales y de dependencia complejas. Las mezclas finitas de distribuciones normales [mclachlan2000finite] son una herramienta poderosa para el modelado estadístico en una amplia variedad de situaciones. @fraley2002model y @marron1992exact mostraron que muchas distribuciones de probabilidad pueden ser bien aproximadas por modelos de mezcla finita. Por otra parte, @priebe1994adaptive mostró que con 10,000 observaciones, una densidad lognormal puede ser bien aproximada por una mezcla de 30 componentes normales.
+
+Para esbozar la idea, sea $Y = (Y_1, \ldots, Y_n)$ que comprende $n$ observaciones completas, donde cada $Y_i$ es un vector $p$-dimensional. Suponga que cada individuo pertenece exactamente a uno de los $K$ componentes de mezcla latentes (grupos o clases). Para $i = 1, \ldots, n$, sea $Z_i \in \{1, \ldots, K\}$ que indica el componente del individuo $i$, y sea $\pi_k = \Pr(Z_i = k)$. Supongamos que $\pi = (\pi_1, \ldots, \pi_K)$ es el mismo para todos los individuos. Dentro de cualquier componente $k$, supongamos que las $p$ variables siguen una distribución normal multivariada específica del componente con media $\mu_k$ y varianza $\Sigma_k$. Sea $\theta = (\mu, \Sigma, \pi)$, donde $\mu = (\mu_1, \ldots, \mu_K)$ y $\Sigma = (\Sigma_1, \ldots, \Sigma_K)$. El modelo de mezcla finita se puede expresar como
+
+\begin{equation}
+Y_i|Z_i, \mu, \Sigma \sim \mathcal{N}(\mu_{Z_i}, \Sigma_{Z_i}), (\#eq:mnn1)
+\end{equation}
+\begin{equation}
+Z_i|\pi \sim \text{Multinomial}(\pi_1, \ldots, \pi_K). (\#eq:mnn2)
+\end{equation}
+
+Al marginalizar sobre $Z_i$'s, este modelo de mezcla es equivalente a
+
+\begin{equation}
+f(Y_i|\theta) = \sum_{k=1}^{K} \pi_k \mathcal{N}(\mu_k, \Sigma_k). (\#eq:mnn3)
+\end{equation}
+
+Para completar una especificación bayesiana del modelo, se pueden imponer distribuciones previas comunes para $\theta$. Por ejemplo, se puede especificar $\pi(\mu_k|\Sigma_k) \sim \mathcal{N}(\mu_0, \tau^{-1}\Sigma_k)$ y $\pi(\Sigma_k) \sim \text{Inverse-Wishart}(m, \Lambda)$ ($k = 1, \ldots K$) para una media vectorial previa $\mu_0$, un parámetro de precisión previo escalar $\tau$, y grados de libertad previos $m$ para la matriz de covarianza previa $\Lambda$ [@gelman2013bayesian]. Considere además, $\pi(\pi_1, \ldots, \pi_K) \sim \text{Dirichlet}(1, \ldots, 1)$, la distribución de Dirichlet.
+
+Como una mezcla de distribuciones normales multivariadas, el modelo es lo suficientemente flexible como para capturar características distribucionales como asimetría y relaciones no lineales que una sola distribución normal multivariada no lograría codificar. Por ejemplo, cuando $K = 1$, el modelo de mezcla normal es el modelo normal típico. Al establecer $K = 2$ y $\mu_1 = \mu_2$ en los modelos \@ref(eq:mnn1) y \@ref(eq:mnn2), los datos con valores atípicos pueden considerarse como surgidos de dos clases: una contiene la mayoría de los valores normales y la otra comprende valores extremos/atípicos que tienen varianzas infladas. Esto también se conoce como el modelo normal contaminado en [@little_rubin_2020, capitulo 12]. Además, aunque $K$ a menudo se fija y se establece previamente, puede tratarse como desconocidos y obtenerse de manera impulsada por los datos mediante métodos bayesianos avanzados. Esta opción amplía aún más la flexibilidad y utilidad de los modelos de mezcla normal, especialmente para datos de alta dimensión [@he2021multiple].
+
+Es importante resaltar que los indicadores de agrupación $Z_i$'s no se observan y son probabilísticos. Esta característica hace que el ajuste del modelo y la imputación sean bastante complicados. A menudo se requieren rutinas de código o computacionales específicas. Las aplicaciones de modelos de mezcla normal para imputaciones de datos faltantes se pueden encontrar, por ejemplo, en @elliott2007using, @Boehning2007 y @kim2014multiple.
+
+En el mismo espíritu que los modelos de mezcla normal, otra estrategia JM para datos no normales es imponer modelos que puedan acomodar características no normales de los datos utilizando parámetros adicionales (es decir, además de $\mu$ y $\Sigma$) e incluir modelos normales como casos especiales. Por ejemplo, @liu1995missing desarrolló modelos de imputación que asumen una familia $t$-multivariada. En la familia $t$, los grados de libertad $\nu$ controlan el comportamiento de la cola de la distribución; a medida que $\nu\rightarrow \infty$, la distribución $t$ converge a una distribución normal. @he2012multiple consideraron una extensión multivariada de la familia gh @tukey1977modern, que es una transformación de una variable normal estándar para acomodar diferentes asimetrías y alargamientos de la distribución de variables no normales, y la transformación está controlada por varios parámetros desconocidos. Además de los modelos normales multivariados contaminados, [@little_rubin_2020, capitulo 12] proporcionaron algunos ejemplos sobre la familia de modelos normales multivariados ponderados. También similar a los modelos de mezcla normal, un desafío técnico de usar estos modelos para la imputación es que las distribuciones posteriores de los parámetros pueden ser bastante complejas. El algoritmo DA correspondiente podría necesitar código específico o necesitar ser ejecutado con la ayuda de paquetes de software bayesianos. 
+
+
+
+
+## Imputación de variables binarias
+
+En el caso de variables binarias, es posible utilizar un modelo logistico de la forma
+
+\begin{equation}
+\text{logit} P(Y_\text{obs} = 1|\mathbf{x\beta}) = \boldsymbol{\beta x} (\#eq:fm16)
+\end{equation}
+
+Sea $\hat{\beta}$ la estimación del parametro del modelo ajustado a los individuos con la información observada $Y_\text{obs}$ y su matriz de varianzas covarianzas $\mathbf{V}$. Sea $\boldsymbol{\beta}^*$ una realización de la distribución aposteriori de $\boldsymbol{\beta}$ aproximada por $\text{MVN}(\hat{\boldsymbol{\beta}},\mathbf{V})$
+
+Para cada observación perdida $y_\text{miss}$ se toma $p^* = [1 + \exp(-\boldsymbol{\beta}^*\mathbf{x}_i)]^{-1}$ y se genera la imputación $y_i^*$ como
+
+\begin{align}
+y_i^\ast= \left\{ \begin{array}{lcc} 1 & \text{si}\ \ u_i < p_i^\ast \\ \\ 0 & \text{En otro caso.} \end{array} \right.
+\end{align}
+Donde $u_i$ es una realización aleatoria de una distribución uniforme en $(0,1)$
+
+## Imputación de variables categóricas no ordenadas
+
+En el caso de variables categóricas no ordenadas con $L > 2$ categorías pueden ser modeladas usando una regresión logística multinomial, donde cada categoría tiene una regresión logistica que se compara con otra categoría determinada (Dígase $l = 1$)
+
+\begin{equation}
+P(y_\text{obs} = l|\mathbf{x},\boldsymbol{\beta}) = \left[\sum_{l' = 1}^L\exp(\beta_{l'}\mathbf{x})\right]^{-1} \exp(\boldsymbol{\beta}_l\mathbf{x}) (\#eq:fm17)
+\end{equation}
+
+donde $\beta_l$ es un vector de dimension $k = \text{dim}(\textbf{x})$ y $\boldsymbol{\beta_1} = 0$.
+
+Sea $\boldsymbol{\beta}^*$ una realización proveniente de una distribución normal aproximada a la distribución aposteriori de $\boldsymbol{\beta} = (\boldsymbol{\beta}_2,...,\boldsymbol{\beta}_L)$ vector de $k(L-1)$. Para cada observación perdida $y_\text{miss}$, sea $p_{il}^* = P(y_i = l|\mathbf{x_i},\boldsymbol{\beta^*})$ la probabilidad de estar en cada categoría y $c_{il} = \sum_{l'=1}^{l}p_{il'}^*$. Se define cada valor imputado $y_i^*$ como
+
+\begin{equation}
+y_i^* = 1 + \sum_{l' = 1}^{L}I(u_i > c_{il}) (\#eq:fm18)
+\end{equation}
+
+donde $u_i$ es una realización aleatoria proveniente de una distribución uniforme en $(0,1)$ y $I(u_i > c_{il}) = 1$ si $u_i > c_{il}$. 0 en otro caso.
+
+## Imputación multivariada para datos categóricos
+
+### Modelos Log-Lineales
+
+Un enfoque clásico para imputar múltiples variables categóricas se basa en una tabla de contingencia formada por dichas variables. Los datos faltantes en tablas de contingencia pueden modelarse usando modelos log-lineales [@little_rubin_2020, Capítulo 13]. Dichos modelos suponen que las variables categóricas $Y_1,...,Y_p$ pueden organizarse como una tabla de contingencia de $p$-dimensiones, dicha tabla contiene $C$ celdas definidas por niveles conjuntos de las variables. Las entradas en la tabla son recuentos $n_{ij,...,u}$, donde $n_{ij,...,u}$ representa el número de recuentos observados en la celda con $Y_1 = i,  Y_2 = j, ..., Y_p = u$, con $i = 1, ..., I$, $j = 1, ..., J$, ..., y $u = 1, ...,U$. En estos casos la idea es modelar la probabilidad de celda $p_{ij,...,u}$ a través de un modelo log-lineal de la forma
+
+\begin{equation}
+\log(p_{ij,...,u}) = \beta_0 + \beta^{(1)}_i + \beta^{(2)}_j + ... + \beta^{(p)}_u . (\#eq:fmmll)
+\end{equation}
+
+Se necesitan restricciones para estimar estos $\beta$ de manera única, y un conjunto común de restricciones es hacer que sumen cero a través de diferentes niveles de cada marginal, es decir, 
+
+$\sum_{i=1}^{I} \beta^{(1)}_i = ... = \sum_{u=1}^{U} \beta^{(p)}_u = 0$.
+
+Notar que el Modelo \@ref(eq:fmmll) solo incluye efectos principales de cada una de las $p$ variables (es decir, factores). Las interacciones de orden superior entre estos efectos, como entre $Y_1$ y $Y_2$, pueden ser parametrizadas incluyendo $\beta^{(12)}_{ij}$ en el modelo. Por otro lado, algunos de los coeficientes (ya sean efectos principales o interacciones) pueden establecerse como 0 para simplificación. Por lo tanto, hay muchas especificaciones posibles de modelos log-lineales.
+
+Los valores faltantes en el marco de la tabla de contingencia resultan en recuentos parcialmente clasificados. @schafer1997analysis presentó algoritmos de imputación DA bayesianos bajo los modelos log-lineales. En resumen, el paso posterior del algoritmo DA extrae conjuntos de parámetros del modelo log-lineal de distribuciones condicionales de Dirichlet dadas los valores actuales de los otros parámetros del modelo log-lineal y los datos imputados; el paso de imputación del algoritmo DA asigna cada recuento parcialmente clasificado al conjunto de celdas posibles como extracciones de una distribución multinomial, con probabilidades condicionales calculadas desde el paso posterior. Estos algoritmos pueden ser implementados en R mediante la libreria R cat.
+
+A medida que aumenta el número de variables categóricas, el nivel de todas las posibles clasificaciones conjuntas en la tabla de contingencia aumenta. Como resultado, incluso para datos completos con tamaños de muestra suficientes, algunas de las celdas podrían tener un recuento cero o números pequeños (es decir, celdas dispersas) y pueden crear un problema al estimar estas probabilidades de celda. Esto es similar a la separación de datos en la regresión logística. Muchos modelos log-lineales utilizados en la práctica solo mantienen efectos principales para evitar el tamaño de muestra pequeño y los problemas de estimación correspondientes cuando se incluyen posibles interacciones. Sin embargo, es importante evaluar y defender dicha especificación cuando solo se implementan modelos de efecto principal. En general, la estrategia de imputación funciona mejor si el número de variables es pequeño a moderado (por ejemplo, 3 a 5). Con un gran número de variables categóricas, podrían necesitarse estrategias de modelamientos alternativas [@he2021multiple].
+
+### Modelos de variables latentes
+
+Un enfoque más usado es utilizar modelos de variables latentes para imputar variables categóricas. En este caso, Si $Y_j$, con $j = 1, \ldots, p$ son todas variables binarias. Primero se define una variable latente normal estándar $Z_j$ tal que $Y_j = 1$ si y solo si $Z_j > 0$ y $Y_j = 0$ en caso contrario. Entonces $Y_j$ puede ser modelado como:
+\[ Y_j = \begin{cases} 
+1 & \text{si } Z_j > 0 \\
+0 & \text{si } Z_j \leq 0 
+\end{cases}, \quad j = 1, \ldots, p, \]
+donde $(Z_1, \ldots, Z_p) \sim N_p(\mu, \Omega)$ y $\mu = (\mu_1, \ldots, \mu_p)$ es el vector de medias, y $\Omega$ es la matriz de correlación para las variables normales estándar p-variadas (es decir, $Z$), capturando la correlación tetracórica entre p variables binarias de $Y$. El Modelo es también conocido como un modelo probit multivariado.
+
+Notar que el vector $Z$ no se observa. Una vez que los elementos de $Z$ están determinados, los correspondientes $Y_j$ pueden ser generados. Bajo el Modelo, necesitamos imputar $Z$ así como imputar los valores faltantes de $Y$. Se puede desarrollar un algoritmo de imputación bayesiana bajo distribuciones priori comúnmente utilizadas para $\mu$ y $\Omega$. Un elemento clave del algoritmo de imputación implica dibujar $Z$ de distribuciones normales truncadas dadas $Y$ [@albert1993].
+
+La idea del enfoque de modelado latente también puede extenderse para imputar variables ordinales y nominales. Por ejemplo, suponga que $Y$ es una variable ordinal con $K$ categorías $K \geq 3$. Entonces $Y$ puede ser expresado como:
+\[ Y = \begin{cases} 
+1 & \text{si } Z \in (-\infty, \tau_1] \\
+\vdots \\
+k & \text{si } Z \in (\tau_{k-1}, \tau_k] \\
+K & \text{si } Z \in (\tau_{K-1}, \infty) 
+\end{cases}, \]
+donde $\tau_1, \ldots, \tau_{K-1}$ representan los $K - 1$ parámetros de umbral que separan la distribución normal estándar $Z$ en $K$ segmentos.
+
+Los algoritmos de imputación de este tipo de modelos están implementados por la librería de R llamada jomo.
+
+## Imputación múltiple por ecuaciones encadenadas (MICE)
+
+Una desventaja de los métodos presentados en las secciones anteriores es que las distribuciones conjuntas estándar utilizadas no siempre proporcionan un buen ajuste a datos multivariados reales. A menudo es posible formular un conjunto de distribuciones condicionales relacionando cada variable con la colección de otras variables, que parecen razonables cuando se toman de una en una, pero son inconsistentes en el sentido de que no pueden derivarse de una única distribución conjunta. Tales modelos pueden ser útiles para imputaciones multiples dadas por ecuaciones encadenadas (MICE por sus siglas en inglés). MICE se basa en esta idea y crea imputaciones basadas en un conjunto de distribuciones condicionales. Específicamente, sea $X_1,..., X_K$ sea un conjunto de variables con valores faltantes, $Z$ un vector de variables que se observan completamente, $x^{(0)}$ el conjunto de datos observados en $X_1,..., X_K$, y $x_j^{(1)}$ el conjunto de valores faltantes para $X_j$, $j = 1,..., K$. Para $j = 1,..., K$, especificamos un modelo adecuado para la distribución condicional de $X_j$ dado $(X_1,..., X_{j-1}, X_{j+1},..., X_K, Z)$ con densidad $p_j(x_j | x_1,..., x_{j-1}, x_{j+1},..., x_K| z, \theta_j)$, parámetros $\theta_j$, y distribución previa $\pi_j(\theta_j)$. Los modelos tienen en cuenta la naturaleza del resultado variable, por ejemplo, logit o probit para una variable binaria, y pueden incluir términos no lineales e interacciones de los predictores, si es apropiado. Sin embargo, no necesariamente corresponden a una distribución conjunta coherente para $X_1,..., X_K$. Los valores faltantes se imputan mediante los siguientes pasos:
+
+1. Crear imputaciones iniciales $x^{(0)(1)}_1,..., x^{(0)(1)}_K$ de los valores faltantes mediante algún procedimiento aproximado.
+2. Dados los valores imputados actuales $x^{(t)(1)}_1,..., x^{(t)(1)}_K$ en la iteración $t$, generar valores imputados actualizados para cada variable como sorteos de la siguiente secuencia de distribuciones predictivas $p$:
+
+\begin{align*}
+x^{(t+1)(1)}_1 \sim &  p(x^{(1)}_1 | x^{(0)}, z, x^{(t)(1)}_2, x^{(t)(1)}_3,..., x^{(t)(1)}_{K-1}, x^{(t)(1)}_K),\\
+\vdots \\
+x^{(t+1)(1)}_j  \sim & p(x^{(1)}_j | x^{(0)}, z, x^{(t+1)(1)}_1, x^{(t+1)(1)}_{j-1}, x^{(t)(1)}_j,..., x^{(t)(1)}_K),\\
+\vdots \\
+x^{(t+1)(1)}_K \sim & p(x^{(1)}_K | x^{(0)}, z, x^{(t+1)(1)}_1, x^{(t+1)(1)}_2, x^{(t)(1)}_3,..., x^{(t)(1)}_{K-1}). 
+\end{align*}
+
+En particular, el conjunto de realizaciones $x^{(t+1)(1)}_j$ en esta secuencia se crea primero generando $\theta^{(t+1)}_j$ de la distribución posterior de $\theta_j$, dado $x^{(0)}, z, x^{(t+1)(1)}_1,..., x^{(t+1)(1)}_{j-1}, x^{(t)(1)}_j,..., x^{(t)(1)}_K$, y luego generando $x^{(t+1)(1)}_j$ de su distribución predictiva posteriori, dado 
+$x^{(0)}, z, x^{(t+1)(1)}_1,..., x^{(t+1)(1)}_{j-1}$, $x^{(t)(1)}_j,..., x^{(t)(1)}_K$, y $\theta^{(t+1)}_j$. Para modelos iid, estos sorteos son independientes entre las unidades y suelen ser computacionalmente sencillos.
+
+Cuando el conjunto de distribuciones condicionales corresponde a una distribución conjunta consistente, este algoritmo se traduce en un gibbs sampling y la secuencia converge a extracciones de la distribución posterior correcta. En particular, Bayes e imputación múltiple para el modelo normal bivariadode las secciones anteriores pueden implementarse mediante el enfoque de ecuaciones encadenadas, siendo cada distribución condicional normal con una regresión aditiva lineal en las variables condicionadas, con una varianza residual constante. En otros contextos, no se garantiza la convergencia a una distribución estacionaria; sin embargo, el procedimiento parece producir imputaciones útiles, siempre que las distribuciones condicionales proporcionen buenos ajustes a los datos observados. La mayor flexibilidad al modelar estas distribuciones condicionales puede compensar la falta de una justificación teórica clara del método.
+
+Debido a que las múltiples imputaciones de ecuaciones encadenadas se basan en una secuencia de modelos de regresión, es importante realizar diagnósticos para asegurarse de que las imputaciones sean razonables. Un enfoque posiblemente útil es estimar la propensión a la falta de datos para cada variable con valores faltantes, condicional a los valores observados o imputados de otras variables, y luego comparar la distribución de los valores observados con la distribución de un conjunto de valores imputados, dentro de categorías de la propensión estimada a la falta de datos. Si el modelo de imputación está generando imputaciones razonables, estas distribuciones empíricas deberían parecerse [@little_rubin_2020]. 
+
+# Consideraciones de la imputación múltiple en encuestas complejas
+
+Según @medina2007imputacion, es importante recordar que los métodos de imputación presuponen ciertas características en la distribución de los datos faltantes, pero no abordan explícitamente el mecanismo que condujo a la selección de las unidades de observación. De forma incorrecta, estos métodos suelen asumir que los datos provienen de una muestra aleatoria y que todas las unidades tienen igual probabilidad de ser seleccionadas.
+
+Las encuestas de hogares se realizan bajo diseños de muestreo complejos. Algunos autores, como @binder1996comment y @binder1996frequency, han planteado dudas sobre la validez de los métodos de imputación múltiple en tales contextos.
+
+Se reconoce que la ausencia de datos es un problema inherente en todas las encuestas, y es habitual buscar procedimientos para completar la información. A pesar de ello, los procedimientos existentes se enfocan principalmente en analizar el patrón de datos faltantes, sin considerar que las unidades de observación pueden tener diferentes probabilidades de selección. 
+
+Por otra parte, es importante considerar el hecho de que los métodos de imputación múltiple asumen que los datos observados y/o completos siguen cierta distribución, pero bajo el paradigma de las encuestas, @kish1965 es conocido por enfatizar que en el muestreo de poblaciones no son las observaciones individuales las que siguen una distribución, sino más bien las probabilidades de selección asignadas a cada elemento en la muestra. Esto es un principio fundamental en el diseño de muestreo y análisis de encuestas, que ayuda a garantizar que la muestra sea representativa de la población en su conjunto. 
+
+Incluso en casos donde la falta de respuesta es baja, @medina2007imputacion aconsejan analizar los ponderadores asociados a los datos faltantes. Puede suceder que un pequeño número de hogares en la muestra representen una porción importante de la población total, y un criterio de imputación inadecuado podría introducir sesgos difíciles de identificar y evaluar.
+
+Los autores enfatizan que en los diseños de muestreo complejos, la selección de observaciones depende del método de estratificación y conglomeración del marco de muestreo, así como del vector de ponderaciones asociado a las diferentes unidades en la muestra.
+
+Además, @medina2007imputacion señalan que la estratificación, la conglomeración y las ponderaciones deben tenerse en cuenta a la hora de imputar datos. En el contexto de una encuesta de hogares, la imputación no solo debe considerar el patrón de datos faltantes, sino también las probabilidades de selección de las unidades de observación.
+
+Este enfoque aborda algunas de las limitaciones de los métodos de imputación tradicionales. Por ejemplo, al considerar las probabilidades de selección, se puede mitigar el riesgo de introducir sesgos en las estimaciones debido a la sobre o subrepresentación de ciertos grupos en la muestra.
+
+Asimismo, al tener en cuenta la estratificación y la conglomeración, se pueden preservar las correlaciones entre las unidades dentro de cada estrato o conglomerado, que a menudo se pierden en los métodos de imputación que tratan cada unidad de observación de forma independiente. Sin embargo, también se debe tener en cuenta que, independientemente del método de imputación utilizado, siempre habrá cierta incertidumbre asociada con la imputación de datos faltantes. Por lo tanto, es importante manejar con cuidado los datos imputados y tener en cuenta esta incertidumbre al hacer inferencias a partir de los datos.
+
+A pesar de que @binder1996frequency demuestran que bajo el supuesto de un diseño de muestreo aleatorio simple y sin remplazo se pueden generar estimaciones precisas para medias y totales, siempre que se utilicen métodos bayesianos (bootstrap), @binder1996comment conjetura que la imputación múltiple no es adecuada en diseños complejos en los que existen más de una etapa de selección, conglomeración y probabilidades de selección desiguales puesto que las expresiones que se deben aplicar para la estimación de la variaza se complejizan. A pesar de ello, para los autores que proponen la imputación múltiple no resulta una preocupación cómo dichas imputaciones afectan las estimaciones finales ante un muestreo multietápico. 
+
+@medina2007imputacion también enfatizan que los procedimientos de imputación no deben ser considerados como una solución definitiva para la falta de datos, sino como una herramienta que permite el manejo de los datos faltantes de una manera más rigurosa y estructurada. Los investigadores deben ser conscientes de las suposiciones subyacentes en cada método de imputación y su posible impacto en las conclusiones derivadas de los datos imputados. El autor señala además que aún "persiste el desafío de desarrollar algoritmos de imputaciones robustos que tengan en cuenta el diseño de la muestra y las probabilidades de selección de las observaciones".
+
+La aplicación de métodos de imputación en diseños de muestreo complejos requiere un cuidado adicional. Es importante recordar que estos métodos deben adaptarse al diseño de muestreo particular y a la estructura de los datos faltantes. No todos los métodos de imputación son adecuados para todos los tipos de datos o diseños de muestreo.
+
+Finalmente, los investigadores deben ser conscientes de que incluso los métodos de imputación más sofisticados no pueden reemplazar completamente los datos faltantes. A pesar de las técnicas de imputación, siempre existe el riesgo de sesgo debido a la falta de datos. Por lo tanto, es fundamental minimizar la cantidad de datos faltantes en la etapa de diseño y recolección de datos, y tratar los datos faltantes de manera adecuada en la etapa de análisis.
+
+
+# Referencias
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,381 @@
+---
+title: |
+  \
+  \
+  \
+  ![](logo.png){width=2in}\
+  \
+  \
+  \
+  **Métodos de Imputación basados en la Función de Verosimilitud**\
+  \
+  \
+  \
+subtitle: |
+  \
+  \
+  \
+  **Subdepartamento de Investigación Estadística**\
+  \
+  **Departamento de Metodologías e Innovación Estadística**\
+  \
+  **Instituto Nacional de Estadísticas**\
+  \
+  \
+  \
+author: "**Miguel Alvarado**"
+date: "**Septiembre, 2023**"
+output:
+  bookdown::pdf_document2:
+    includes:
+      in_header: columns2.tex
+    toc: FALSE
+    toc_depth: 2
+bibliography: "referencias_IMP_ML.bib"
+biblio-style: "apalike"
+link-citations: true
+nocite: '@*'
+colorlinks: yes
+fontsize: 10pt
+language:
+  label:
+    thm: 'Teorema '
+header-includes:  
+  - \renewcommand{\and}{\\}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = TRUE)
+```
+
+```{r , eval = TRUE, echo = FALSE, message = FALSE, warning = FALSE}
+library(distr)
+library(distrEx)
+library(RColorBrewer)
+options(digits = 6)
+mycols <- rev(brewer.pal(n = 9, name = 'YlGnBu'))
+```
+
+\newpage
+# **Anexo 1: Distribución Weibull$(\sigma)$**
+
+```{r , eval = TRUE, echo = TRUE}
+load('FUNs_MLE_WEIBULL1.RData')
+
+As <- seq(1.5, 6, 1.5)
+Sigmas <- seq(0.5, 2.0, 0.5)
+set.seed(12358)
+at <- 1
+for(a in As){
+  st <- 1
+  for(s in Sigmas){
+    nmMTX <- paste('MLE_Weib_', 'A', at, '_', 'S', st, sep = "")
+    assign(nmMTX, FUN_SIM_MLE_Weibull1(arg_a = a, arg_s = s) )
+    st <- st + 1
+  }
+  at <- at + 1
+}
+```
+
+
+```{r , eval = TRUE, echo = FALSE}
+A1_S1 <- c(Sigmas[1], summary(MLE_Weib_A1_S1[,1])[c(4,1,6)], sd(MLE_Weib_A1_S1[,1]))
+A1_S2 <- c(Sigmas[2], summary(MLE_Weib_A1_S2[,1])[c(4,1,6)], sd(MLE_Weib_A1_S2[,1]))
+A1_S3 <- c(Sigmas[3], summary(MLE_Weib_A1_S3[,1])[c(4,1,6)], sd(MLE_Weib_A1_S3[,1]))
+A1_S4 <- c(Sigmas[4], summary(MLE_Weib_A1_S4[,1])[c(4,1,6)], sd(MLE_Weib_A1_S4[,1]))
+A1_S <- matrix(cbind(A1_S1, A1_S2, A1_S3, A1_S4), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A1_S) <- c("S1", "S2", "S3", "S4")
+colnames(A1_S) <- c("Scale", "Prom.", "Min.", "Max.", "S.D.")
+
+A2_S1 <- c(Sigmas[1], summary(MLE_Weib_A2_S1[,1])[c(4,1,6)], sd(MLE_Weib_A2_S1[,1]))
+A2_S2 <- c(Sigmas[2], summary(MLE_Weib_A2_S2[,1])[c(4,1,6)], sd(MLE_Weib_A2_S2[,1]))
+A2_S3 <- c(Sigmas[3], summary(MLE_Weib_A2_S3[,1])[c(4,1,6)], sd(MLE_Weib_A2_S3[,1]))
+A2_S4 <- c(Sigmas[4], summary(MLE_Weib_A2_S4[,1])[c(4,1,6)], sd(MLE_Weib_A2_S4[,1]))
+A2_S <- matrix(cbind(A2_S1, A2_S2, A2_S3, A2_S4), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A2_S) <- c("S1", "S2", "S3", "S4")
+colnames(A2_S) <- c("Scale", "Prom.", "Min.", "Max.", "S.D.")
+
+A3_S1 <- c(Sigmas[1], summary(MLE_Weib_A3_S1[,1])[c(4,1,6)], sd(MLE_Weib_A3_S1[,1]))
+A3_S2 <- c(Sigmas[2], summary(MLE_Weib_A3_S2[,1])[c(4,1,6)], sd(MLE_Weib_A3_S2[,1]))
+A3_S3 <- c(Sigmas[3], summary(MLE_Weib_A3_S3[,1])[c(4,1,6)], sd(MLE_Weib_A3_S3[,1]))
+A3_S4 <- c(Sigmas[4], summary(MLE_Weib_A3_S4[,1])[c(4,1,6)], sd(MLE_Weib_A3_S4[,1]))
+A3_S <- matrix(cbind(A3_S1, A3_S2, A3_S3, A3_S4), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A3_S) <- c("S1", "S2", "S3", "S4")
+colnames(A3_S) <- c("Scale", "Prom.", "Min.", "Max.", "S.D.")
+
+A4_S1 <- c(Sigmas[1], summary(MLE_Weib_A4_S1[,1])[c(4,1,6)], sd(MLE_Weib_A4_S1[,1]))
+A4_S2 <- c(Sigmas[2], summary(MLE_Weib_A4_S2[,1])[c(4,1,6)], sd(MLE_Weib_A4_S2[,1]))
+A4_S3 <- c(Sigmas[3], summary(MLE_Weib_A4_S3[,1])[c(4,1,6)], sd(MLE_Weib_A4_S3[,1]))
+A4_S4 <- c(Sigmas[4], summary(MLE_Weib_A4_S4[,1])[c(4,1,6)], sd(MLE_Weib_A4_S4[,1]))
+A4_S <- matrix(cbind(A4_S1, A4_S2, A4_S3, A4_S4), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A4_S) <- c("S1", "S2", "S3", "S4")
+colnames(A4_S) <- c("Scale", "Prom.", "Min.", "Max.", "S.D.")
+```
+
+
+:::::: {.cols data-latex=""}
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Weib_A1_S1[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,2.5), las = 1, 
+     main = expression(paste("Weibull(", a, "=1.5, ", sigma, "). Con ", sigma, "= (0.5, 1.0, 1.5, 2.0)")),
+     xlab = "Simulación", ylab = expression(paste(sigma)))
+points(MLE_Weib_A1_S2[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Weib_A1_S3[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Weib_A1_S4[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Sigmas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::: {.col data-latex="{0.02\textwidth}"}
+\ 
+:::
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Weib_A2_S1[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,2.5), las = 1, 
+     main = expression(paste("Weibull(", a, "=3.0, ", sigma, "). Con ", sigma, "= (0.5, 1.0, 1.5, 2.0)")),
+     xlab = "Simulación", ylab = expression(paste(sigma)))
+points(MLE_Weib_A2_S2[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Weib_A2_S3[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Weib_A2_S4[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Sigmas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::::::
+
+:::::: {.cols data-latex=""}
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Weib_A3_S1[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,2.5), las = 1, 
+     main = expression(paste("Weibull(", a, "=4.5, ", sigma, "). Con ", sigma, "= (0.5, 1.0, 1.5, 2.0)")),
+     xlab = "Simulación", ylab = expression(paste(sigma)))
+points(MLE_Weib_A3_S2[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Weib_A3_S3[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Weib_A3_S4[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Sigmas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::: {.col data-latex="{0.02\textwidth}"}
+\ 
+:::
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Weib_A4_S1[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,2.5), las = 1, 
+     main = expression(paste("Weibull(", a, "=6.0, ", sigma, "). Con ", sigma, "= (0.5, 1.0, 1.5, 2.0)")),
+     xlab = "Simulación", ylab = expression(paste(sigma)))
+points(MLE_Weib_A4_S2[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Weib_A4_S3[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Weib_A4_S4[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Sigmas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Sigmas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::::::
+
+
+```{r table1, tidy = FALSE, echo = FALSE, fig.pos = 'H'}
+knitr::kable(
+  list(A1_S, A2_S), digits = 4, 
+  booktabs = TRUE, caption = "Weibull: 1-2")
+```
+
+```{r table2, tidy = FALSE, echo = FALSE, fig.pos = 'H'}
+knitr::kable(
+  list(A3_S, A4_S), digits = 4, 
+  booktabs = TRUE, caption = "Weibull: 3-4")
+```
+
+\
+
+XXX
+
+\
+
+\newpage
+# **Anexo 2: Distribución Gamma$(\alpha)$**
+
+```{r , eval = TRUE, echo = TRUE}
+load('FUNs_MLE_GAMMA1.RData')
+
+Alfas <- seq(1.5, 6, 1.5)
+Sigmas <- seq(0.5, 2.0, 0.5)
+set.seed(12358)
+at <- 1
+for(a in Alfas){
+  st <- 1
+  for(s in Sigmas){
+    nmMTX <- paste('MLE_Gamma_', 'A', at, '_', 'S', st, sep = "")
+    assign(nmMTX, FUN_SIM_MLE_Gamma(arg_a = a, arg_s = s) )
+    st <- st + 1
+  }
+  at <- at + 1
+}
+```
+
+
+```{r , eval = TRUE, echo = FALSE}
+A1_S1 <- c(Alfas[1], summary(MLE_Gamma_A1_S1[,1])[c(4,1,6)], sd(MLE_Gamma_A1_S1[,1]))
+A2_S1 <- c(Alfas[2], summary(MLE_Gamma_A2_S1[,1])[c(4,1,6)], sd(MLE_Gamma_A2_S1[,1]))
+A3_S1 <- c(Alfas[3], summary(MLE_Gamma_A3_S1[,1])[c(4,1,6)], sd(MLE_Gamma_A3_S1[,1]))
+A4_S1 <- c(Alfas[4], summary(MLE_Gamma_A4_S1[,1])[c(4,1,6)], sd(MLE_Gamma_A4_S1[,1]))
+A_S1 <- matrix(cbind(A1_S1, A2_S1, A3_S1, A4_S1), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A_S1) <- c("A1", "A2", "A3", "A4")
+colnames(A_S1) <- c("Shape", "Prom.", "Min.", "Max.", "S.D.")
+
+A1_S2 <- c(Alfas[1], summary(MLE_Gamma_A1_S2[,1])[c(4,1,6)], sd(MLE_Gamma_A1_S2[,1]))
+A2_S2 <- c(Alfas[2], summary(MLE_Gamma_A2_S2[,1])[c(4,1,6)], sd(MLE_Gamma_A2_S2[,1]))
+A3_S2 <- c(Alfas[3], summary(MLE_Gamma_A3_S2[,1])[c(4,1,6)], sd(MLE_Gamma_A3_S2[,1]))
+A4_S2 <- c(Alfas[4], summary(MLE_Gamma_A4_S2[,1])[c(4,1,6)], sd(MLE_Gamma_A4_S2[,1]))
+A_S2 <- matrix(cbind(A1_S2, A2_S2, A3_S2, A4_S2), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A_S2) <- c("A1", "A2", "A3", "A4")
+colnames(A_S2) <- c("Shape", "Prom.", "Min.", "Max.", "S.D.")
+
+A1_S3 <- c(Alfas[1], summary(MLE_Gamma_A1_S3[,1])[c(4,1,6)], sd(MLE_Gamma_A1_S3[,1]))
+A2_S3 <- c(Alfas[2], summary(MLE_Gamma_A2_S3[,1])[c(4,1,6)], sd(MLE_Gamma_A2_S3[,1]))
+A3_S3 <- c(Alfas[3], summary(MLE_Gamma_A3_S3[,1])[c(4,1,6)], sd(MLE_Gamma_A3_S3[,1]))
+A4_S3 <- c(Alfas[4], summary(MLE_Gamma_A4_S3[,1])[c(4,1,6)], sd(MLE_Gamma_A4_S3[,1]))
+A_S3 <- matrix(cbind(A1_S3, A2_S3, A3_S3, A4_S3), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A_S3) <- c("A1", "A2", "A3", "A4")
+colnames(A_S3) <- c("Shape", "Prom.", "Min.", "Max.", "S.D.")
+
+A1_S4 <- c(Alfas[1], summary(MLE_Gamma_A1_S4[,1])[c(4,1,6)], sd(MLE_Gamma_A1_S4[,1]))
+A2_S4 <- c(Alfas[2], summary(MLE_Gamma_A2_S4[,1])[c(4,1,6)], sd(MLE_Gamma_A2_S4[,1]))
+A3_S4 <- c(Alfas[3], summary(MLE_Gamma_A3_S4[,1])[c(4,1,6)], sd(MLE_Gamma_A3_S4[,1]))
+A4_S4 <- c(Alfas[4], summary(MLE_Gamma_A4_S4[,1])[c(4,1,6)], sd(MLE_Gamma_A4_S4[,1]))
+A_S4 <- matrix(cbind(A1_S4, A2_S4, A3_S4, A4_S4), ncol = 5, nrow = 4, byrow = TRUE, dimnames = NULL)
+rownames(A_S4) <- c("A1", "A2", "A3", "A4")
+colnames(A_S4) <- c("Shape", "Prom.", "Min.", "Max.", "S.D.")
+```
+
+
+:::::: {.cols data-latex=""}
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Gamma_A1_S1[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,7.0), las = 1,
+     main = expression(paste("Gamma(", alpha, ", ", sigma, "=0.5). Con ", alpha, "= (1.5, 3.0, 4.5, 6.0)")),
+     xlab = "Simulación", ylab = expression(paste(alpha)))
+points(MLE_Gamma_A2_S1[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Gamma_A3_S1[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Gamma_A4_S1[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Alfas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::: {.col data-latex="{0.02\textwidth}"}
+\ 
+:::
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Gamma_A1_S2[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,7.0), las = 1,
+     main = expression(paste("Gamma(", alpha, ", ", sigma, "=1.0). Con ", alpha, "= (1.5, 3.0, 4.5, 6.0)")),
+     xlab = "Simulación", ylab = expression(paste(alpha)))
+points(MLE_Gamma_A2_S2[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Gamma_A3_S2[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Gamma_A4_S2[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Alfas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::::::
+
+:::::: {.cols data-latex=""}
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Gamma_A1_S3[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,7.0), las = 1,
+     main = expression(paste("Gamma(", alpha, ", ", sigma, "=1.5). Con ", alpha, "= (1.5, 3.0, 4.5, 6.0)")),
+     xlab = "Simulación", ylab = expression(paste(alpha)))
+points(MLE_Gamma_A2_S3[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Gamma_A3_S3[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Gamma_A4_S3[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Alfas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::: {.col data-latex="{0.02\textwidth}"}
+\ 
+:::
+::: {.col data-latex="{0.49\textwidth}"}
+
+```{r , echo = FALSE, out.width = '95%', fig.asp = 0.8, fig.align = 'center'}
+par(mar = c(4.3, 4, 2, 1.5))
+plot(x = 1:1000, y = MLE_Gamma_A1_S4[,1], col = mycols[1], pch = 1, cex = 0.8, ylim = c(0,7.0), las = 1,
+     main = expression(paste("Gamma(", alpha, ", ", sigma, "=2.0). Con ", alpha, "= (1.5, 3.0, 4.5, 6.0)")),
+     xlab = "Simulación", ylab = expression(paste(alpha)))
+points(MLE_Gamma_A2_S4[,1], col = mycols[2], pch = 1, cex = 0.8)
+points(MLE_Gamma_A3_S4[,1], col = mycols[3], pch = 1, cex = 0.8)
+points(MLE_Gamma_A4_S4[,1], col = mycols[4], pch = 1, cex = 0.8)
+abline(h = Alfas[1], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[2], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[3], col = "black", lwd = 1.5, lty = 2)
+abline(h = Alfas[4], col = "black", lwd = 1.5, lty = 2)
+```
+:::
+::::::
+
+
+```{r table3, tidy = FALSE, echo = FALSE, fig.pos = 'H'}
+knitr::kable(
+  list(A_S1, A_S2), digits = 4, 
+  booktabs = TRUE, caption = "Gamma: 1-2")
+```
+
+```{r table4, tidy = FALSE, echo = FALSE}
+knitr::kable(
+  list(A_S4, A_S4), digits = 4, 
+  booktabs = TRUE, caption = "Gamma: 3-4")
+```
+
+\
+
+XXX
+
+\
+
+\newpage
+# **Distribución Weibull$(a, \sigma)$**
+
+XXX
+
+
+\newpage
+# Bibliografía {-}
+\setlength{\parindent}{0.5in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{0.2in}
+\noindent
+<div id="refs"></div>
+```{r refmgr references, results="asis", echo=FALSE}
+# Print
+```
+\setlength{\parindent}{0pt}
+\setlength{\leftskip}{2in}
+\setlength{\parskip}{0in}
