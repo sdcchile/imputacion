@@ -138,7 +138,8 @@ Además, es importante destacar que los participantes expresaron la necesidad de
 Conociendo nuestra realidad quedamos en posición de poder orientarnos usando como directrices los alcances y logros presentes en el estado del arte de esta importante técnica, que nos permitímos exhibir mediante el siguiente diagrama conceptual, para dar el contexto necesario acerca de que hacemos y la preponderancia de los métodos usados en la institución. 
 
 
-![Mapa Conceptual de la Imputación](mapa_conceptual.png)
+![Mapa Conceptual de la Imputación](mapa_imp_lissette.png)
+
 ### En caso de no respuesta total
 
 1. Una acción plausible es observar el diseño del muestreo sobre el cual se aplicó la encuesta, dado que este, proveerá los factores proporcionales a la inversa de la probabilidad de ocurrencia del evento. Como existen datos faltantes en algunos registros, dichos factores denominados de expansión, podemos calibrarlos mediante sucesivas aproximaciones recursivas. 
