@@ -5,7 +5,7 @@ title: |
   ![](logo_ine.png){width=1.3in}\
   \
   \   
-  **Anexo 1: Taller de aplicación en manejo e imputación de datos perdidos con R.**\
+  **Anexo 1: Taller de Aplicación en Manejo e Imputación de Datos Perdidos con R.**\
   **Instituto Nacional de Estadísticas**
 author:  |
   |
