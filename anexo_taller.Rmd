@@ -5,7 +5,7 @@ title: |
   ![](logo_ine.png){width=1.3in}\
   \
   \   
-  **Anexo 1: Guía con lineamientos y orientaciones metodológicas para la imputación de datos estadísticos**\
+  **Anexo 1: Taller de aplicación en manejo e imputación de datos perdidos con R.**\
   **Instituto Nacional de Estadísticas**
 author:  |
   |
@@ -31,86 +31,117 @@ author:  |
   |
   |
   |
+  | 
+  |
+  |
+  |
   |
 output:
   bookdown::pdf_document2: default
   pdf_document:
+    extra_dependencies: ["float"]
     toc: no
     toc_depth: 4
     number_sections: true
-#bibliography: biblio.bib
 cls: apa.cls
 link-citations: true
 nocite: '@*'
 colorlinks: no
 header-includes:
    - \usepackage{eso-pic,graphicx,transparent}
+   - \usepackage{float}
    - \renewcommand{\contentsname}{Índice}
    - \renewcommand{\figurename}{Figura}
    - \renewcommand{\tablename}{Tabla}
-   - \usepackage{eso-pic,graphicx,transparent}
 ---
 
+\newpage
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-# Anexo: Definiciones y aplicaciones en R
+\newpage
 
-## Deiniciones
+# Manejo de datos perdidos
 
-En el lenguaje de programación R, utilizamos herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
+El siguiente anexo se enfoca en resaltar la trascendencia de la gestión y análisis de datos faltantes, una constante en cualquier estudio estadístico del mundo real. La aparición de valores ausentes puede derivar de diversas circunstancias, que abarcan desde inconvenientes en la toma de medidas hasta cuestiones vinculadas a la integridad de los datos. Esta presencia puede significativamente complicar la comprensión y la interpretación de los análisis.
 
-```{r}
-library(tidyverse)
+En este contexto, el siguiente anexo, tiene un enfoque tipo taller, que procura dotar a los participantes con las competencias y herramientas indispensables para gestionar la ausencia de datos de manera eficiente, promoviendo la mejora de la calidad de los análisis. Se muestra el empleo del paquete `naniar` de R, una herramienta de gran utilidad para explorar, visualizar y gestionar valores faltantes.
+
+El anexo se compone de distintas secciones, cada una orientada hacia un aspecto específico de la gestión de datos faltantes. La sección inicial abarca la detección, el conteo y la síntesis de los datos faltantes, haciendo uso de técnicas tales como la función `is.na()` y las funciones de resumen, como `sum()`, `mean()`, entre otras. Además, se instruye sobre la exploración de patrones asociados con los datos faltantes en diversas variables y casos, así como la identificación de sesgos y patrones subyacentes en los datos.
+
+En las secciones subsiguientes, se aborda la imputación de valores faltantes, es decir, el procedimiento para rellenar las lagunas en los datos mediante diversas técnicas de imputación, como la imputación por media, la imputación múltiple y la regresión de valores faltantes, entre otras. También se proporciona orientación para evaluar la calidad de los datos imputados y tomar decisiones basadas en conjuntos de datos imputados.
+
+El anexo incluye, además, una sección dedicada a la visualización de datos faltantes, en la cual se instruye sobre la generación de visualizaciones abarcadoras tanto para el conjunto de datos en su totalidad como para variables, casos y otros resúmenes, así como la exploración de estos elementos en sus respectivos grupos.
+
+En resumen, el anexo provee de tips y herramientas necesarias para gestionar, explorar y analizar datos faltantes de forma eficiente, con el propósito de elevar la calidad de los análisis estadísticos.
+
+
+## Introducción a los datos perdidos
+
+Para este anexo se utilizarán herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
+
+Gertrude Mary Cox, destacada figura en el campo de la estadística, expresó en una ocasión: "La mejor estrategia frente a la ausencia de datos es simplemente no tener ninguno". Aunque esta afirmación es cierta, no se ajusta a la realidad en la que vivimos. En el mundo de los análisis de datos con aplicación en situaciones reales, la presencia de datos faltantes es una constante. Para sobresalir como analista, es imperativo dominar la habilidad de gestionar estos valores ausentes.
+
+Comprender el funcionamiento de los datos faltantes reviste una importancia fundamental, dado que pueden influir de manera inesperada en tus análisis. Por ejemplo, al aplicar un modelo lineal a conjuntos de datos con valores faltantes, se produce una pérdida de fragmentos de información, lo que a su vez implica que tus decisiones carecerán de una base de evidencia sólida. La sustitución de valores faltantes, conocida como imputación, debe realizarse con sumo cuidado, ya que la simple inserción de la media arroja estimaciones y decisiones de baja calidad.
+
+En este documento aprenderás sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes.
+
+Por lo tanto, asumiremos que tienes experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. En este primer capítulo, presentamos los valores faltantes y cómo verificarlos y contarlos.
+
+## Algunas definiciones iniciales
+
+¿Qué son los valores faltantes?
+Antes de comenzar, debemos definir los valores faltantes. Los valores faltantes son valores que deberían haberse registrado, pero no lo fueron. Piensa en esto de esta manera: puedes no haber registrado accidentalmente que viste un pájaro, esto es un valor faltante. Esto es diferente a registrar que no se observaron pájaros. R almacena los valores faltantes como `NA`, que significa no disponible.
+
+¿Cómo podemos verificar si tengo valores faltantes?
+Los valores faltantes no saltan y gritan "¡Estoy aquí!". Por lo general, están ocultos, como una aguja en un pajar. Para detectar valores faltantes, usa `any_na`, que devuelve `TRUE` si hay valores faltantes y `FALSE` si no los hay. `are_na` pregunta "¿son estos `NA`?" y devuelve `TRUE/FALSE` para cada valor. `are_na` nos muestra 3 valores `TRUE`, que corresponden a 3 valores faltantes. Para evitar contar cada `TRUE` manualmente, `n_miss` cuenta el número de valores faltantes. Y `prop_miss` entrega la proporción de valores faltantes, lo que nos da un contexto importante: ¡el 50% de los datos está faltando!
+
+¿Qué sucede cuando mezclamos valores faltantes con nuestros cálculos? Necesitamos saber qué sucede para poder estar preparados para encontrar estos casos. La regla general es: Los cálculos con `NA` devuelven `NA`. Digamos que tienes la altura de tres amigos: Sofia, Juan y José. La suma de sus alturas devuelve `NA`, esto se debe a que no conocemos la suma de un número y `NA`.
+
+Tips con datos faltantes
+Hay algunos "tips" que debes tener en cuenta al trabajar con datos faltantes: Por ejemplo, `NaN` significa "Not a Number" (No es un número) y se obtiene de operaciones como la raíz cuadrada de -1. R interpreta `NaN` como un valor faltante. `NULL` es un valor vacío pero no es faltante. Esto es sutilmente diferente de los valores faltantes: un cubo vacío no tiene agua faltante. `Inf` es un valor infinito, y se obtiene de ecuaciones como 10 dividido por 0 y no es faltante.
+
+Por último, debemos tener cuidado con las declaraciones condicionales con valores faltantes. Por ejemplo, `NA` o `TRUE` es `TRUE`. `NA` o `FALSE` es `NA`. `NA` `+` `NaN` es `NA`. `NaN` `+` `NA` es `NaN`.
+
+## Carga de librerias
+
+```{r, message=FALSE}
 library(naniar)
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readxl)
 ```
-
-
-La estadística Gertrude Mary Cox (@monroe1980memoriam) dijo una vez: "Lo mejor que se puede hacer con los datos faltantes es no tener ninguno". Si bien esto es cierto, no es el mundo en el que vivimos. Trabajar con datos del mundo real significa trabajar con datos faltantes. Para ser un gran analista, necesitamos saber cómo lidiar con los valores faltantes. Comprender cómo funcionan los datos faltantes es importante, ya que pueden tener efectos inesperados en tu análisis. Por ejemplo, ajustar un modelo lineal en datos con valores faltantes elimina fragmentos de datos. Esto significa que tus decisiones no se basan en la evidencia correcta. Reemplazar los valores faltantes, lo que se llama imputación, debe hacerse con mucho cuidado, ya que insertar solo la media puede llevar a estimaciones y decisiones deficientes.
-
-En este apartado aprenderemos sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes. Por lo tanto, asumiremos que tenemoss experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. 
-
-**¿Qué son los valores faltantes?**
-
-Antes de comenzar, debemos definir los valores faltantes. Los valores faltantes son valores que deberían haberse registrado, pero no lo fueron. Pensemos en esto de esta manera: puedes no haber registrado accidentalmente que viste un pájaro, esto es un valor faltante. Esto es diferente a registrar que no se observaron pájaros. `R` almacena los valores faltantes como `NA`, que significa no disponible.
-
-**¿Cómo puedo verificar si tengo valores faltantes?**
-
-Los valores faltantes no saltan y gritan "¡Estoy aquí!". Por lo general, están ocultos, como una aguja en un pajar. Para detectar valores faltantes, usaresmo `any_na`, que devuelve `TRUE` si hay valores faltantes y `FALSE` si no los hay. `are_na` pregunta "¿son estos `NA`?" y devuelve `TRUE/FALSE` para cada valor. are_na nos muestra 3 valores `TRUE`, que corresponden a 3 valores faltantes. Para evitar contar cada `TRUE` manualmente, `n_miss` cuenta el número de valores faltantes. Y `prop_miss` proporciona la proporción de valores faltantes, lo que proporciona un contexto importante: Por ejemplo, el 50% de los datos está faltando.
-
-¿Qué sucede cuando mezclamos valores faltantes con nuestros cálculos? Necesitamos saber qué sucede para poder estar preparados para encontrar estos casos. La regla general es: Los cálculos con `NA` devuelven `NA`. Digamos que tienes la altura de tres amigos: Sophie, Dan y Fred. La suma de sus alturas devuelve `NA`, esto se debe a que no conocemos la suma de un número y `NA`.
-
-Hay algunas "trampas" que debes tener en cuenta al trabajar con datos faltantes: Por ejemplo, `NaN` significa "Not a Number" (No es un número) y se obtiene de operaciones como la raíz cuadrada de -1. **R** interpreta `NaN` como un valor faltante. `NULL` es un valor vacío pero no es faltante. Esto es sutilmente diferente de los valores faltantes: un cubo vacío no tiene agua faltante. `Inf` es un valor infinito, y se obtiene de ecuaciones como 10 dividido por 0 y no es faltante.
-
-Por último, debeos tener cuidado con las declaraciones condicionales con valores faltantes. Por ejemplo, `NA` o `TRUE` es `TRUE`. `NA` o `FALSE` es `NA`. `NA` `+` `NaN` es `NA`. `NaN` `+` `NA` es `NaN`.
 
 
 ## Usando y encontrando valores faltantes
 
-Al trabajar con datos faltantes, hay algunos comandos con los que deberías estar familiarizado - en primer lugar, debes poder identificar si hay valores faltantes y dónde se encuentran.
+Al trabajar con datos faltantes, hay algunos comandos con los que deberiamos estar familiarizados - en primer lugar, debemos poder identificar si hay valores faltantes y dónde se encuentran.
 
 Usando las herramientas `any_na()` y `are_na()`, identifica qué valores faltan.
 
 
-
-
 ```{r}
-# creamos x, un vector, con valores NA, NaN, Inf, ".", y "missing"
+# Crea x, un vector, con valores NA, NaN, Inf, ".", y "missing"
 x <- c(NA, NaN,Inf, ".", "missing")
 
-# Usamos any_na() y are_na() para explorar los valores missings
+# Usa any_na() y are_na() sobre x para explorar los missings
 any_na(x)
 are_na(x)
 
 ```
 
 
-**¿Cuántos valores faltantes hay?**
 
-Una de las primeras cosas que desearás comprobar en un nuevo conjunto de datos es si existen valores faltantes y cuántos hay.
+### ¿Cuántos valores faltantes hay?
 
-Podrías usar `are_na()` y contar los valores faltantes, pero la forma más eficiente de contarlos es usar la función `n_miss()`. Esto te dirá el número total de valores faltantes en los datos.
+Una de las primeras cosas que deseamos comprobar en un nuevo conjunto de datos es si existen valores faltantes y cuántos hay.
+
+Podríamos usar `are_na()` y contar los valores faltantes, pero la forma más eficiente de contarlos es usar la función `n_miss()`. Esto te dirá el número total de valores faltantes en los datos.
 
 Luego puedes encontrar el porcentaje de valores faltantes en los datos con la función `pct_miss`. Esto te dirá el porcentaje de valores faltantes en los datos.
 
@@ -118,58 +149,987 @@ También puedes encontrar el complemento de estos valores, cuántos valores comp
 
 
 ```{r}
-# Usando el dataframe de ejemplo de estatuta (heights) y pesos (weights) dat_hw
+# Usando un dataframe de ejemplo de (alturas y pesos) heights y weights dat_hw
 dat_hw <- read.table("dealing/dat_hw.txt", h=T,  dec=".")
 ```
-
-
 
 ```{r}
 # Usa n_miss() para contar el numero total de valores missing en dat_hw
 naniar::n_miss(dat_hw)
+```
 
-# Usa n_miss() en dat_hw$weight para contar el numero total de valores missing
+```{r}
+# Usa n_miss() sobre dat_hw$weight para contar el numero total de valores missing
 naniar::n_miss(dat_hw$weight)
+```
 
-# Usa n_complete() en dat_hw para contar el numero total de valores completos
+```{r}
+# Usa n_complete() sobre dat_hw para contar el numero total de valores completos
 n_complete(dat_hw)
+```
 
-# Usa n_complete() en dat_hw$weight para contar el numero total de valores completos
+```{r}
+# Utiliza n_complete() en dat_hw$weight para contar el número total de valores completos
 n_complete(dat_hw$weight)
+```
 
-# Usamos prop_miss() y prop_complete() en dat_hw para contar el numero total de valores missing en cada una de las variables
+```{r}
+# Utiliza prop_miss() y prop_complete() en dat_hw para contar el número total de valores
+# faltantes y completos respectivamente.
 prop_miss(dat_hw)
 prop_complete(dat_hw)
 ```
 
-**Resumiendo la ausencia de datos**
+## Como resumir valores perdidos
 
-Ahora que comprendes el comportamiento de los valores faltantes en R y cómo contarlos, escalaremos nuestros resúmenes para casos (filas) y variables, utilizando `miss_var_summary()` y `miss_case_summary()`, y también exploraremos cómo se pueden aplicar a grupos en un dataframe utilizando la función `group_by` de `dplyr`.
+
+### Resumiendo la ausencia de datos
+
+Ahora que comprendemos el comportamiento de los valores faltantes en R y cómo contarlos, escalaremos nuestros resúmenes para casos (filas) y variables, utilizando `miss_var_summary()` y `miss_case_summary()`, y también exploraremos cómo se pueden aplicar a grupos en un dataframe utilizando la función `group_by` de `dplyr`.
+
 
 ```{r}
-# Summarise missingness in each variable of the `airquality` dataset
+# Resumen de la ausencia de valores en cada variable del conjunto de datos `airquality`
 miss_var_summary(airquality)
 
+```
 
-# Summarise missingness in each case of the `airquality` dataset
+
+
+```{r}
+# Resumen de la ausencia de valores en cada caso del conjunto de datos `airquality`
 miss_case_summary(airquality)
+
 ```
 
 ```{r}
-# Return the summary of missingness in each variable, grouped by Month, in the `airquality` dataset
+# Muestra el resumen de la ausencia de valores en cada variable, agrupados por Mes,
+# en el conjunto de datos `airquality`
 airquality %>% group_by(Month) %>% miss_var_summary()
-
-# Return the summary of missingness in each case, grouped by Month, in the `airquality` dataset
-airquality %>% group_by(Month) %>% miss_case_summary()
 ```
 
 
-###########################
+
+```{r}
+# Muestra el resumen de la ausencia de valores en cada caso, agrupados por Mes,
+# en el conjunto de datos `airquality`
+airquality %>% group_by(Month) %>% miss_case_summary()
+
+```
+
+### Tabulando los valores faltantes
+
+Loss resumenes de los valores faltantes que acabamos de calcular nos dan el número y el porcentaje de observaciones faltantes para los casos y variables.
+
+Otra manera de resumir los valores faltantes es mediante la tabulación del número de veces que hay 0, 1, 2, 3, valores faltantes en una variable o en un caso.
+
+En este ejercicio, vamos a tabular el número de valores faltantes en cada caso y variable utilizando `miss_var_table()` y `miss_case_table()`, y también combinaremos estos resúmenes con el operador `group_by` de `dplyr` para explorar los resúmenes sobre una variable de agrupación en el conjunto de datos.
 
 
-## Evaluación de la no respuesta
+```{r}
+# Tabula la ausencia de valores en cada variable y caso del conjunto
+# de datos `airquality`
+miss_case_table(airquality)
+miss_var_table(airquality)
+```
 
-### Actividad 
+
+```{r}
+# Tabula la ausencia de valores en cada variable, agrupados por Mes, 
+# en el conjunto de datos `airquality`
+airquality %>% group_by(Month) %>% miss_var_table()
+```
+
+
+```{r}
+# Tabula la ausencia de valores en cada caso, agrupados por Mes, 
+# en el conjunto de datos `airquality`
+airquality %>% group_by(Month) %>% miss_case_table()
+
+```
+
+### Otros resúmenes de valores faltantes
+
+Algunos resúmenes de valores faltantes son particularmente útiles para diferentes tipos de datos. Por ejemplo, `miss_var_span()` y `miss_var_run()`.
+
+`miss_var_span()` calcula el número de valores faltantes en una variable especificada para un intervalo repetido. Esto es muy útil en datos de series de tiempo, para buscar patrones de valores faltantes semanales (de 7 días).
+
+`miss_var_run()` calcula el número de "rachas" o "cadenas" de valores faltantes. Esto es útil para encontrar patrones inusuales de valores faltantes, por ejemplo, podría encontrar un patrón repetitivo de 5 completos y 5 faltantes.
+
+Tanto `miss_var_span()` como `miss_var_run()` funcionan con el operador `group_by` de `dplyr`.
+
+
+```{r}
+# Calcula los resúmenes para cada secuencia de ausencia de valores 
+# para la variable hourly_counts
+miss_var_run(pedestrian, var = hourly_counts)
+```
+
+
+```{r}
+# Calcula los resúmenes para cada intervalo de ausencia de valores, 
+# con un intervalo de 4000, para la variable hourly_counts
+miss_var_span(pedestrian, var = hourly_counts, span_every = 4000)
+```
+
+```{r}
+# Para cada variable `month`, calcular la secuencia de ausencia de
+# valores para hourly_counts
+pedestrian %>% group_by(month) %>% miss_var_run(var = hourly_counts)
+```
+
+```{r}
+
+# Para cada variable `month`, calcular el intervalo de ausencia de 
+# valores con un intervalo de 2000, para la variable hourly_counts
+pedestrian %>% group_by(month) %>% miss_var_span(var = hourly_counts, span_every = 2000)
+
+```
+
+## ¿Como visualizar los valores perdidos?
+
+### Primeras visualizaciones de datos faltantes
+
+Puede resultar difícil determinar dónde están los valores faltantes en sus datos, y aquí es donde la visualización realmente puede ayudar.
+
+La función `vis_miss()` crea una visualización general de la falta de datos en los datos. También tiene opciones para agrupar filas según la falta de datos, usando `cluster = TRUE`; así como opciones para ordenar las columnas, desde las más faltantes hasta las menos faltantes (`sort_miss = TRUE`).
+
+```{r}
+# Visualizar la ausencia de valores en el conjunto de datos 'riskfactors'
+vis_miss(riskfactors)
+
+```
+
+```{r}
+# Visualizar y clusterizar la ausencia de valores en el conjunto de datos 'riskfactors'
+vis_miss(riskfactors, cluster = TRUE)
+
+```
+
+```{r}
+# Visualizar y ordenar las columnas por la ausencia de valores en el conjunto de datos 'riskfactors'
+vis_miss(riskfactors, sort_miss = TRUE)
+
+```
+
+### Visualización de casos y variables faltantes
+
+Para obtener una imagen clara de los valores faltantes en las variables y casos, utiliza `gg_miss_var()` y `gg_miss_case()`. Estas son las versiones visuales de `miss_var_summary()` y `miss_case_summary()`.
+
+Estos pueden dividirse en múltiples gráficos, uno para cada categoría, eligiendo una variable para segmentar por ella.
+
+```{r}
+# Visualizar el número de valores faltantes en casos utilizando gg_miss_case()
+gg_miss_case(riskfactors)
+
+```
+
+```{r}
+# Explorar el número de valores faltantes en casos y facetar por la variable `education`
+gg_miss_case(riskfactors, facet = education)
+```
+
+```{r}
+# Visualizar el número de valores faltantes en las variables utilizando gg_miss_var()
+gg_miss_var(riskfactors)
+```
+
+```{r}
+# Explora el numero de valores perdidos en las variables usando `gg_miss_var()`
+# y facet por la variable `education`
+gg_miss_var(riskfactors, facet = education)
+```
+
+## Visualizando patrones de datos faltantes
+
+Practiquemos algunas formas diferentes de visualizar patrones de datos faltantes usando:
+
+`gg_miss_upset()` para mostrar un patrón general de datos faltantes.
+`gg_miss_fct()` para un conjunto de datos que tiene un factor de interés: el estado marital.
+y `gg_miss_span()` para explorar los datos faltantes en un conjunto de datos de series de tiempo.
+¿Qué notas sobre los datos faltantes y la segmentación en los datos?
+
+```{r}
+# Explore el patrón de ausencia de valores en el conjunto de datos 'airquality'
+# con gg_miss_upset()
+
+gg_miss_upset(airquality)
+```
+
+```{r}
+# Explora cómo cambia la ausencia de valores en relación con la variable
+# `marital` con gg_miss_fct()
+gg_miss_fct(x = riskfactors, fct = marital)
+```
+
+```{r}
+# Usando el set de datos pedestrian, explore como la perdida de la variable
+# hourly_counts cambia para un span de 3000 
+gg_miss_span(pedestrian, var = hourly_counts, span_every = 3000)
+```
+
+```{r}
+# Usando el set de datos `pedestrian`, explore el impacto de la variable
+# `month` usando facetting por `month` y explore como la perdida cambia
+# para un span de 1000
+gg_miss_span(pedestrian, var = hourly_counts , span_every = 1000, facet = month)
+```
+
+# Limpieza y organización de valores faltantes
+
+En la sección dos, aprenderás cómo descubrir valores faltantes ocultos como "missing" o "N/A" y reemplazarlos con `NA`. Aprenderás cómo manejar de manera eficiente los valores faltantes implícitos: aquellos valores que se dan por sentados como faltantes pero que no se enumeran explícitamente. También cubriremos cómo explorar la dependencia de datos faltantes, discutiendo el tipo de patrón de perdida Missing Completely at Random (MCAR), Missing At Random (MAR), Missing Not At Random (MNAR) y lo que significan para el análisis de tus datos.
+
+## Búsqueda y reemplazo de valores faltantes
+
+### Usando miss_scan_count
+
+Tienes un conjunto de datos con valores faltantes codificados como `"N/A"`, `"missing"` y `"na"`. Pero antes de seguir adelante y comenzar a reemplazarlos con `NA`, deberíamos tener una idea de qué tan grande es el problema.
+
+Utiliza `miss_scan_count` para contar los valores faltantes posibles en el conjunto de datos `pacman`, que contiene tres columnas:
+
+`year`: el año en que la persona obtuvo esa puntuación.
+`initial`: las iniciales de la persona.
+`score`: las puntuaciones de esa persona.
+
+```{r}
+# Usando el dataframe de ejemplo
+pacman<-readRDS("dealing/pacman.rds")
+```
+
+
+
+```{r}
+# Explore los raros valores missing "N/A"
+miss_scan_count(data = pacman, search = list("N/A"))
+```
+
+```{r}
+# Explore los raros valores missing "missing"
+miss_scan_count(data = pacman, search = list("missing"))
+```
+
+```{r}
+# Explore los raros valores missing "na"
+miss_scan_count(data = pacman, search = list("na"))
+```
+
+```{r}
+# Explore los raros valores missing " " (un simple espacio)
+miss_scan_count(data = pacman, search = list(" "))
+```
+
+```{r}
+# Explore todos los raros valores, "N/A", "missing", "na", " "
+miss_scan_count(data = pacman, search = list("N/A", "missing","na", " "))
+```
+
+
+### Usando replace_with_na
+
+Siguiendo con el conjunto de datos anterior, ahora sabemos que tenemos algunos valores faltantes extraños.
+
+Ahora, vamos a hacer algo al respecto y reemplazar estos valores con valores faltantes (por ejemplo, `NA`) usando la función `replace_with_na()`. Que en este caso es como se definen por convención en R como un valor perdido real.
+
+```{r}
+# Imprimir el inicio de los datos de pacman utilizando `head()`
+head(pacman)
+
+# Reemplazar los valores faltantes extraños "N/A", "na" y "missing" con `NA` para las variables
+# year y score
+pacman_clean <- replace_with_na(pacman, replace = list(year = c("N/A", "na", "missing"),
+                                score = c("N/A", "na", "missing")))
+                                        
+# ¿Se conservan estos valores en `pacman_clean`?
+miss_scan_count(pacman_clean, search = list("N/A", "na", "missing"))
+
+```
+
+### Usando las variantes "scoped" de replace_with_na
+
+Para reducir la repetición de código al reemplazar valores con `NA`, utiliza las variantes "scoped" de `replace_with_na()`:
+
+- `replace_with_na_at()` 
+- `replace_with_na_if()` 
+- `replace_with_na_all()`
+
+La sintaxis de reemplazo se ve así:
+
+`~.x == "N/A"`
+Esto reemplaza todos los casos que son iguales a `"N/A"`.
+
+`~.x %in% c("N/A", "missing", "na", " ")`
+Reemplaza todos los casos que tienen `"N/A"`, `"missing"`, `"na"` o `" "`.
+
+
+```{r}
+# Usa `replace_with_na_at()` para replazar con NA
+replace_with_na_at(pacman,
+                   .vars = c("year", "month", "day"), 
+                   ~.x %in% c("N/A", "missing", "na", " "))
+
+# Usa `replace_with_na_if()` para replazar con NA el valor character usando 
+# `is.character`
+replace_with_na_if(pacman,
+                   .predicate = is.character, 
+                   ~.x %in% c("N/A", "missing", "na", " "))
+
+# Usa `replace_with_na_all()` para replazar con NA
+replace_with_na_all(pacman, ~.x %in% c("N/A", "missing", "na", " "))
+```
+
+## Rellenando valores faltantes hacia abajo
+
+### Arreglando valores faltantes implícitos usando `complete()`
+
+Vamos a explorar un nuevo conjunto de datos, `frogger`.
+
+Este conjunto de datos contiene 4 puntuaciones por jugador registradas en diferentes momentos: `morning`, `afternoon`, `evening` y `late_night`.
+
+Cada jugador debería haber jugado 4 partidas, una en cada uno de estos momentos, pero parece que no todos los jugadores completaron todos estos juegos.
+
+Utiliza la función `complete()` para hacer explícitos estos valores faltantes implícitos.
+
+
+```{r}
+frogger <- read_excel("dealing/frogger.xlsx")
+```
+
+```{r}
+# muestra los datos dee frogger para observarlos
+head(frogger)
+```
+
+```{r}
+# Usa `complete()` en la variable `time` y `name` para  
+# hacer los valores perdidos implicitos, hacerlos explicitos
+frogger_tidy <- frogger %>% complete(time, name)
+```
+
+### Arreglando valores faltantes explícitos usando `fill()`
+
+Un tipo de valor faltante que puede ser obvio de tratar es donde se da la primera entrada de un grupo, pero las entradas subsiguientes están marcadas como `NA`.
+
+Estos valores faltantes a menudo son el resultado de valores vacíos en hojas de cálculo para evitar ingresar múltiples nombres varias veces; así como para "legibilidad humana".
+
+Este tipo de problema se puede resolver utilizando la función `fill()` del paquete `tidyr`.
+
+```{r}
+# Imprimir los datos de frogger para examinarlos
+frogger
+
+# Utilizar `fill()` para rellenar la variable name en el conjunto de
+# datos frogger
+frogger %>% fill(name)
+
+```
+
+### Usando `complete()` y `fill()` juntos
+
+¡Ahora pongámoslo todo junto!
+
+Utiliza `complete()` y `fill()` juntos para corregir valores faltantes explícitos e implícitos en el conjunto de datos frogger.
+
+```{r}
+# Imprime los datos de frogger para examinarlos
+frogger
+
+# Usa fill() y complete() en los valores faltantes para que nuestro conjunto
+# de datos sea coherente
+frogger %>%
+  fill(name) %>%
+  complete(name, time)
+
+```
+
+## Dependencia de datos faltantes
+
+
+### Diferencias entre MCAR y MAR
+
+Necesitamos hacer ciertas suposiciones sobre nuestros datos cuando avanzamos en el análisis.
+
+¿Cuál de las siguientes respuestas sobre MCAR y MAR es VERDADERA?
+
+## Posibles respuestas
+
+*En general, eliminar observaciones es más seguro para datos MCAR que eliminar observaciones para datos MAR. *
+
+MCAR significa que la falta de datos está relacionada con los datos observados, mientras que para MAR, la falta de datos está relacionada con los datos no observados.
+
+MAR y MCAR son efectivamente lo mismo, la distinción no es importante.
+
+**Los datos MCAR no están relacionados con los datos observados y no observados.**
+**Los datos MAR están relacionados con los datos observados.**
+
+### Explorando la dependencia de datos faltantes
+
+Para aprender sobre la estructura de la falta de datos en los datos, podemos explorar cómo cambia la presentación de la falta de datos al ordenar los datos.
+
+Para el conjunto de datos `oceanbuoys`, explora la falta de datos con `vis_miss()` y luego ordénalo por algunas variables diferentes.
+
+Este no es un proceso definitivo, pero te ayudará a comenzar a hacer las preguntas correctas sobre tus datos. Exploramos técnicas más poderosas en la próxima sección.
+
+```{r}
+# Organizar por año
+oceanbuoys %>% arrange(year) %>% vis_miss()
+
+# Organizar por latitud
+oceanbuoys %>% arrange(latitude) %>% vis_miss()
+
+# Organizar por wind_ew (viento este-oeste)
+oceanbuoys %>% arrange(wind_ew) %>% vis_miss()
+
+```
+
+### Explorando aún más la dependencia de los datos faltantes
+
+Usando la información previa sobre el conjunto de datos `oceanbuoys`, podemos considerar que *Los datos son MAR: tanto el año como la ubicación son importantes para explicar los datos faltantes.*. Es es posible concluirlo al revisar con `gg_miss_var()` y `gg_miss_case()`, agrupando por año para obtener más información. Por ejemplo:
+
+`library(naniar); gg_miss_var(oceanbuoys, facet = year)`
+
+
+## Herramientas para explorar la dependencia de los datos faltantes
+
+### Creando datos de matriz de sombra
+
+Los datos faltantes pueden ser complicados de pensar, ya que normalmente no se proclaman por sí mismos y en su lugar se esconden entre la maleza de los datos.
+
+Una forma de ayudar a visualizar los valores faltantes es cambiar la forma en que pensamos sobre los datos, pensando en cada valor de datos como faltante o no faltante.
+
+La función `as_shadow()` en R transforma un dataframe en una matriz de sombra, un formato de datos especial donde los valores son o bien faltantes (`NA`) o no faltantes (`!NA`).
+
+Los nombres de columna de una matriz de sombra son los mismos que los datos, pero tienen un sufijo agregado `_NA`.
+
+Para realizar un seguimiento y comparar los valores de los datos con su estado de falta, use la función `bind_shadow()`. Tener los datos en este formato, con la columna de matriz de sombra unida a los datos regulares, se llama datos `nabular`.
+
+
+```{r}
+# Crear una matriz de sombra de datos con `as_shadow()`
+as_shadow(oceanbuoys)
+
+# Crear datos nablulares al unir la sombra a los datos con `bind_shadow()`
+bind_shadow(oceanbuoys)
+
+# Unir solo las variables con valores faltantes utilizando
+# bind_shadow(only_miss = TRUE)
+bind_shadow(oceanbuoys, only_miss = TRUE)
+
+```
+
+### Realizando resúmenes agrupados de valores faltantes
+
+Ahora que puedes crear datos nabulares, vamos a utilizarlos para explorar los datos. Vamos a calcular estadísticas de resumen basadas en los valores faltantes de otra variable.
+
+Para hacer esto, vamos a seguir los siguientes pasos:
+
+Primero, `bind_shadow()` convierte los datos en datos nabulares.
+
+A continuación, realiza algunos resúmenes en los datos utilizando `group_by()` y `summarize()` para calcular la media y la desviación estándar, utilizando las funciones `mean()` y `sd()`.
+
+
+```{r}
+# `bind_shadow()` y `group_by()` para la ausencia de humedad (`humidity_NA`)
+oceanbuoys %>%
+  bind_shadow() %>%
+  group_by(humidity_NA) %>%
+  summarize(wind_ew_mean = mean(wind_ew), #calcula la media de wind_ew
+            wind_ew_sd = sd(wind_ew)) #calcula la desviación estándar de wind_ew
+  
+# Repetir esto, pero calculando resúmenes para el viento norte-sur (`wind_ns`)
+oceanbuoys %>%
+  bind_shadow() %>%
+  group_by(humidity_NA) %>%
+  summarize(wind_ns_mean = mean(wind_ns),
+            wind_ns_sd = sd(wind_ns))
+
+```
+
+## Explorando combinaciones adicionales de valores faltantes
+
+Puede ser útil obtener un poco de información adicional sobre el número de casos en cada condición de valores faltantes.
+
+En este ejercicio, vamos a añadir información sobre el número de casos observados utilizando `n()` dentro de la función `summarize()`.
+
+Luego añadiremos un nivel adicional de agrupamiento al examinar la combinación de datos faltantes de humedad (`humidity_NA`) y datos faltantes de temperatura del aire (`air_temp_c_NA`).
+
+```{r}
+# Resumir wind_ew según los datos faltantes de`air_temp_c_NA`
+oceanbuoys %>% 
+  bind_shadow() %>%
+  group_by(air_temp_c_NA) %>%
+  summarize(wind_ew_mean = mean(wind_ew),
+            wind_ew_sd = sd(wind_ew),
+            n_obs = n())
+
+# Resumir wind_ew según los datos faltantes de `air_temp_c_NA` y `humidity_NA`
+oceanbuoys %>% 
+  bind_shadow() %>%
+  group_by(air_temp_c_NA, humidity_NA) %>%
+  summarize(wind_ew_mean = mean(wind_ew),
+            wind_ew_sd = sd(wind_ew),
+            n_obs = n())
+
+```
+
+## Visualizando los valores faltantes de una variable
+
+
+### Datos nabulares y llenado por valores faltantes
+
+Los estadísticos de resumen son útiles para calcular, pero como dicen, una imagen vale más que mil palabras.
+
+En este ejercicio, vamos a explorar cómo puedes utilizar datos `nabular` para explorar la variación en una variable según los valores faltantes de otra.
+
+Vamos a utilizar el conjunto de datos `oceanbuoys` de `naniar`.
+
+```{r}
+# Explorar primero la estructura de valores faltantes en `oceanbuoys`
+# utilizando `vis_miss()`
+vis_miss(oceanbuoys)
+
+# Explorar la distribución de `wind_ew` según la ausencia de `air_temp_c_NA`
+# utilizando `geom_density()`
+bind_shadow(oceanbuoys) %>%
+  ggplot(aes(x = wind_ew, 
+             color = air_temp_c_NA)) + 
+  geom_density()
+
+# Explorar la distribución de la temperatura del mar según la ausencia de
+# humedad (humidity_NA) utilizando `geom_density()`
+bind_shadow(oceanbuoys) %>%
+  ggplot(aes(x = sea_temp_c,
+             color = humidity_NA)) + 
+  geom_density()
+
+```
+
+Ahora puedes utilizar datos nabulares para visualizar y explorar datos faltantes utilizando gráficos de densidad.
+
+### Datos nabulares y resumen por valores faltantes
+
+En este ejercicio, vamos a explorar cómo utilizar datos `nabular` para explorar la variación en una variable según los valores faltantes de otra.
+
+Vamos a utilizar el conjunto de datos `oceanbuoys` de `naniar`, y luego crear múltiples gráficos de los datos utilizando facets.
+
+Esto te permite explorar diferentes capas de valores faltantes.
+
+```{r}
+# Exploramos la distribución del viento este-oeste (wind_ew) en función de 
+# los datos faltantes de temperatura del aire utilizando geom_density() y
+# facetando por los datos perdidos de temperatura del aire (air_temp_c_NA).
+oceanbuoys %>%
+  bind_shadow() %>%
+  ggplot(aes(x = wind_ew)) + 
+  geom_density() + 
+  facet_wrap(~air_temp_c_NA)
+
+# Ampliamos esta visualización al colorear por los datos perdidos 
+# de humedad (humidity_NA).
+oceanbuoys %>%
+  bind_shadow() %>%
+  ggplot(aes(x = wind_ew,
+             color = humidity_NA)) + 
+  geom_density() + 
+  facet_wrap(~air_temp_c_NA)
+
+```
+
+Ahora puedes utilizar datos nabulares para visualizar y explorar datos faltantes.
+
+### Explorar variación por valores faltantes: gráficos de caja
+
+Los ejercicios anteriores utilizan datos `nabular` junto con gráficos de densidad para explorar la variación en una variable según los valores faltantes de otra.
+
+Vamos a utilizar el conjunto de datos `oceanbuoys` de `naniar`, utilizando gráficos de caja en lugar de facets u otros para explorar diferentes capas de valores faltantes.
+
+```{r}
+# Explora la distribución del viento este-oeste (`wind_ew`) en función de
+# los datos perdidos de temperatura del aire utilizando `geom_boxplot()`.
+oceanbuoys %>%
+  bind_shadow() %>%
+  ggplot(aes(x = air_temp_c_NA,
+             y = wind_ew)) + 
+  geom_boxplot()
+
+# Ampliamos esta visualización al facetar por la falta de
+# humedad (`humidity_NA`).
+oceanbuoys %>%
+  bind_shadow() %>%
+  ggplot(aes(x = air_temp_c_NA,
+             y = wind_ew)) + 
+  geom_boxplot() + 
+  facet_wrap(~humidity_NA)
+
+```
+Ahora podemos utilizar datos nabulares para visualizar y explorar datos faltantes con gráficos de caja y envolturas de facts.
+
+## Visualizar valores faltantes en dos variables
+
+### Explorando datos faltantes con gráficos de dispersión
+
+Los valores faltantes en un gráfico de dispersión en `ggplot2` se eliminan por defecto, con una advertencia.
+
+Podemos mostrar los valores faltantes en un gráfico de dispersión utilizando `geom_miss_point()` - una geometría especial de `ggplot2` que desplaza los valores faltantes dentro del gráfico, mostrándolos un 10% por debajo del mínimo de la variable.
+
+Practiquemos esta visualización con el conjunto de datos `oceanbuoys`.
+
+```{r}
+# Exploramos la ausencia de datos en el viento y la temperatura del aire, y
+# mostramos la ausencia utilizando `geom_miss_point()`
+ggplot(oceanbuoys,
+       aes(x = wind_ew,
+           y = air_temp_c)) + 
+  geom_miss_point()
+
+# Exploramos la ausencia de datos en la humedad y la temperatura del aire,
+# y mostrar la ausencia utilizando `geom_miss_point()`
+ggplot(oceanbuoys,
+       aes(x = humidity,
+           y = air_temp_c)) + 
+  geom_miss_point()
+
+```
+
+### Usando facets para explorar valores faltantes
+
+Debido a que `geom_miss_point()` es una geometría de ggplot, puedes usarla con características de `ggplot2` como el uso de facetas.
+
+Esto significa que podemos explorar rápidamente los valores faltantes y permanecer dentro de los límites familiares de `ggplot2`.
+
+```{r}
+# Exploramos la ausencia de datos en el viento y temperatura del aire, y
+# mostrar la ausencia utilizando `geom_miss_point()`. Facetar por año para
+# explorar más a fondo.
+ggplot(oceanbuoys,
+       aes(x = wind_ew,
+           y = air_temp_c)) + 
+  geom_miss_point() + 
+  facet_wrap(~year)
+
+# Explorar la ausencia de datos en la humedad y la temperatura del aire,
+# y mostrar la ausencia utilizando `geom_miss_point()`. Facetar por año
+# para explorar más a fondo.
+ggplot(oceanbuoys,
+       aes(x = humidity,
+           y = air_temp_c)) + 
+  geom_miss_point() + 
+  facet_wrap(~year)
+
+```
+
+Ahora puedes usar `geom_miss_point()` para explorar valores faltantes en un gráfico de dispersión y puedes usar facetas para expandir y explorar aún más.
+
+### Facets para explorar valores faltantes (múltiples gráficos)
+
+Otra técnica útil con `geom_miss_point()` es explorar los valores faltantes creando múltiples gráficos.
+
+Así como lo hemos hecho en ejercicios anteriores, podemos usar los datos nabulares para ayudarnos a crear gráficos facetados adicionales.
+
+Incluso podemos crear múltiples gráficos facetados según los valores en los datos, como el año, y las características de los datos, como la falta de valores.
+
+```{r}
+# Utilizar geom_miss_point() y facet_wrap para explorar cómo la ausencia
+# de datos en wind_ew y air_temp_c es diferente para los datos
+# perdidos de humedad
+bind_shadow(oceanbuoys) %>%
+  ggplot(aes(x = wind_ew,
+           y = air_temp_c)) + 
+  geom_miss_point() + 
+  facet_wrap(~humidity_NA)
+
+# Utilizar geom_miss_point() y facet_grid para explorar cómo la ausencia
+# de datos en wind_ew y air_temp_c es diferente para la ausencia de
+# humedad Y por año - utilizando `facet_grid(humidity_NA ~ year)`
+bind_shadow(oceanbuoys) %>%
+  ggplot(aes(x = wind_ew,
+             y = air_temp_c)) + 
+  geom_miss_point() + 
+  facet_grid(humidity_NA~year)
+
+```
+
+##Realizando y rastreando imputaciones.
+
+### Imputar datos por debajo del rango con datos nulos.
+
+Queremos hacer un seguimiento de los valores que imputamos. Si no lo hacemos, es muy difícil evaluar qué tan buenos son los valores imputados.
+
+Vamos a practicar imputando datos y recreando visualizaciones en el conjunto de ejercicios anterior mediante la imputación de valores por debajo del rango de los datos.
+
+Esta es una forma muy útil de ayudar a explorar aún más la falta de datos y también proporciona el marco para imputar valores faltantes.
+
+Primero, vamos a imputar los datos por debajo del rango usando `impute_below_all()`, y luego visualizar los datos. Notamos que aunque podemos ver dónde están los valores faltantes en este caso, necesitamos alguna forma de hacer un seguimiento de ellos. El patrón de programación de seguimiento de datos faltantes puede ayudar con esto.
+
+```{r}
+# Imputar los datos por debajo del rango utilizando `impute_below_all`.
+ocean_imp <- impute_below_all(oceanbuoys)
+
+# Visualizar los nuevos valores faltantes
+ggplot(ocean_imp,
+       aes(x = wind_ew, y = air_temp_c)) + 
+  geom_point()
+
+# Imputar y rastrear datos con `bind_shadow`, `impute_below`, 
+# y `add_label_shadow`
+ocean_imp_track <- bind_shadow(oceanbuoys) %>% 
+  impute_below_all() %>%
+  add_label_shadow()
+
+# Observar los valores imputados
+ocean_imp_track
+
+```
+
+### Visualizar valores imputados en un gráfico de dispersión.
+
+Ahora, vamos a recrear uno de los gráficos anteriores que vimos que utilizaba `geom_miss_point()`.
+
+Para hacer esto, necesitamos imputar los datos por debajo del rango de los datos. Esta es una imputación especial para explorar los datos. Esta imputación ilustrará lo que necesitamos practicar: cómo hacer un seguimiento de los valores faltantes. Para imputar los datos por debajo del rango de los datos, usamos la función `impute_below_all()`.
+
+```{r}
+# Imputar y hacer un seguimiento de los valores faltantes
+ocean_imp_track <- bind_shadow(oceanbuoys) %>% 
+  impute_below_all() %>%
+  add_label_shadow()
+
+# Visualizar la falta de datos en el viento y la temperatura del aire,
+# coloreando los valores faltantes de la temperatura del aire con air_temp_c_NA
+ggplot(ocean_imp_track,
+       aes(x = wind_ew, y = air_temp_c, color = air_temp_c_NA)) + 
+  geom_point()
+
+# Visualizar la humedad y la temperatura del aire, coloreando los casos
+# faltantes utilizando la variable any_missing
+ggplot(ocean_imp_track,
+       aes(x = humidity, y = air_temp_c, color = any_missing)) + 
+  geom_point()
+
+```
+
+### Crear un histograma de los datos imputados.
+
+Ahora que podemos recrear la primera visualización de `geom_miss_point()`, vamos a explorar cómo podemos aplicar esto a otras tareas exploratorias.
+
+Una tarea útil es evaluar el número de valores faltantes en una variable dada usando un histograma. Podemos hacer esto usando el conjunto de datos `ocean_imp_track` que creamos en el último ejercicio, el cual está cargado en esta sesión.
+
+```{r}
+# Explorar los valores de air_temp_c, visualizando la cantidad de datos
+# faltantes con `air_temp_c_NA`.
+p <- ggplot(ocean_imp_track, aes(x = air_temp_c, fill = air_temp_c_NA)) + geom_histogram()
+
+# Explorar los datos faltantes en la humedad utilizando humidity_NA
+p2 <- ggplot(ocean_imp_track, aes(x = humidity, fill = humidity_NA)) + geom_histogram()
+
+# Explorar los datos faltantes en air_temp_c según el año, utilizando
+# `facet_wrap(~year)`.
+p + facet_wrap(~year)
+
+# Explorar los datos faltantes en humedad según el año, utilizando
+# `facet_wrap(~year)`.
+p2 + facet_wrap(~year)
+
+```
+
+## ¿Qué hace una buena imputación?
+
+
+### Evaluando imputaciones malas.
+
+Para evaluar imputaciones, es útil saber cómo se ve algo malo. Para explorar esto, veamos un método de imputación típicamente malo: imputar usando el valor promedio.
+
+En este ejercicio vamos a explorar cómo funciona el método de imputación de promedio usando un diagrama de caja, utilizando el conjunto de datos `oceanbuoys`.
+
+```{r}
+# Imputar el valor medio y rastrear las imputaciones
+ocean_imp_mean <- bind_shadow(oceanbuoys) %>% 
+  impute_mean_all() %>% 
+  add_label_shadow()
+
+# Explorar los valores medios de la humedad en el conjunto de datos imputado
+ggplot(ocean_imp_mean, 
+       aes(x = humidity_NA, y = humidity)) + 
+  geom_boxplot()
+
+# Explorar los valores de la temperatura del aire en el conjunto de datos
+# imputados
+ggplot(ocean_imp_mean, 
+       aes(x = air_temp_c_NA, y = air_temp_c)) + 
+  geom_boxplot()
+
+```
+### Evaluando imputaciones: La escala
+
+Si bien la imputación de la media puede no parecer tan mala cuando la comparamos mediante un diagrama de caja, es importante tener una idea de la variación en los datos. Es por eso que es importante explorar cómo cambia la escala y la dispersión de los valores imputados en comparación con los datos.
+
+Una forma de evaluar la adecuación de la escala de las imputaciones es usar un gráfico de dispersión para explorar si los valores son apropiados o no.
+
+```{r}
+# Explorar las imputaciones en la temperatura del aire y la humedad,
+# coloreando por la variable any_missing
+ggplot(ocean_imp_mean, 
+       aes(x = air_temp_c, y = humidity, color = any_missing)) + 
+  geom_point()
+
+# Explorar las imputaciones en la temperatura del aire y la humedad,
+# coloreando por la variable any_missing y facetando por año
+ggplot(ocean_imp_mean, 
+       aes(x = air_temp_c, y = humidity, color = any_missing)) +
+  geom_point() + 
+  facet_wrap(~year)
+
+```
+
+
+## Realizando imputaciones.
+
+
+### Utilizando simputation para imputar datos.
+
+Existen muchos paquetes de imputación en R. Nos enfocaremos en usar el paquete `simputation`, que proporciona una interfaz simple y potente para realizar imputaciones.
+
+Construir un buen modelo de imputación es muy importante, pero es un tema complejo: hay tanto para construir un buen modelo de imputación como para construir un buen modelo estadístico. En este sección, nos enfocaremos en cómo evaluar las imputaciones.
+
+Primero, vamos a ver cómo utilizar la función `impute_lm()`, que imputa valores de acuerdo a un modelo lineal especificado.
+
+En este ejercicio, vamos a aplicar las técnicas de evaluación anteriores a los datos con `impute_lm()`, y luego construir sobre este método de imputación en lecciones posteriores.
+
+```{r}
+library(simputation)
+# Imputar la humedad y la temperatura del aire utilizando wind_ew y wind_ns,
+# y rastrear los valores faltantes
+ocean_imp_lm_wind <- oceanbuoys %>% 
+    bind_shadow() %>%
+    impute_lm(air_temp_c ~ wind_ew + wind_ns) %>% 
+    impute_lm(humidity ~ wind_ew + wind_ns) %>%
+    add_label_shadow()
+    
+# Graficar los valores imputados para air_temp_c y humedad,
+# coloreados por la ausencia de datos
+ggplot(ocean_imp_lm_wind, 
+       aes(x = air_temp_c, y = humidity, color = any_missing)) +
+  geom_point()
+
+```
+### Evaluando y comparando imputaciones
+
+Cuando se construye un modelo de imputación, es una buena idea compararlo con otro método. En esta lección, vamos a comparar el conjunto de datos previamente imputados creado utilizando `impute_lm()` con el conjunto de datos imputados con la media. Ambos conjuntos de datos están incluidos en este ejercicio como `ocean_imp_lm_wind` y `ocean_imp_mean`, respectivamente.
+
+
+```{r}
+# Unir los modelos juntos
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          .id = "imp_model")
+
+# Inspeccionar los valores de la temperatura del aire y la humedad en
+# un gráfico de dispersión
+ggplot(bound_models,
+       aes(x = air_temp_c,
+           y = humidity,
+           color = any_missing)) +
+  geom_point() + 
+  facet_wrap(~imp_model)
+
+```
+### Evaluando imputaciones (muchos modelos y variables)
+
+Cuando se construye un modelo de imputación, es una buena idea compararlo con otro método.
+
+En esta lección, se te pedirá que agregues un modelo de imputación final que contenga una pieza adicional de información útil que ayude a explicar parte de la variación en los datos. Luego, compararás los valores, como se hizo anteriormente en la última lección.
+
+```{r}
+# Construir un modelo añadiendo el año a la variable objetivo
+ocean_imp_lm_wind_year <- bind_shadow(oceanbuoys) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + year) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + year) %>%
+  add_label_shadow()
+
+# Unir los modelos mean, lm_wind y lm_wind_year juntos
+bound_models <- bind_rows(mean = ocean_imp_mean,
+                          lm_wind = ocean_imp_lm_wind,
+                          lm_wind_year = ocean_imp_lm_wind_year,
+                          .id = "imp_model")
+
+# Explorar la temperatura del aire y la humedad, coloreando los valores
+# faltantes y facetando por modelo de imputación
+ggplot(bound_models, aes(x = air_temp_c, y = humidity, color = any_missing)) +
+  geom_point() + facet_wrap(~imp_model)
+
+```
+
+## Evaluando imputaciones y modelos
+
+
+### Combinación y comparación de muchos modelos de imputación
+
+Para evaluar los diferentes métodos de imputación, necesitamos ponerlos en un único dataframe. A continuación, compararás tres enfoques diferentes para manejar los datos faltantes utilizando el conjunto de datos `oceanbuoys`.
+
+El primer método es utilizar solo los casos completados y se carga como `ocean_cc`.
+El segundo método es imputar valores utilizando un modelo lineal con predicciones hechas con wind y se carga como `ocean_imp_lm_wind`.
+Crearás el tercer conjunto de datos imputados, `ocean_imp_lm_all`, utilizando un modelo lineal e imputando las variables `sea_temp_c`, `air_temp_c` y `humidity` utilizando las variables `wind_ew`, `wind_ns`, `year`, `latitude` y `longitude`.
+
+Luego unirás todos los conjuntos de datos (`ocean_cc`, `ocean_imp_lm_wind` y `ocean_imp_lm_all`), llamándolo `bound_models`.
+
+
+```{r}
+ocean_cc<-oceanbuoys %>%
+na.omit() %>%
+bind_shadow %>%
+add_label_shadow()
+```
+
+
+
+```{r}
+# Crear un conjunto de datos imputado utilizando modelos lineales
+ocean_imp_lm_all <- bind_shadow(oceanbuoys) %>%
+  add_label_shadow() %>%
+  impute_lm(sea_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(air_temp_c ~ wind_ew + wind_ns + year + latitude + longitude) %>%
+  impute_lm(humidity ~ wind_ew + wind_ns + year + latitude + longitude)
+
+# Unir los conjuntos de datos
+bound_models <- bind_rows(cc = ocean_cc,
+                          imp_lm_wind = ocean_imp_lm_wind,
+                          imp_lm_all = ocean_imp_lm_all,
+                          .id = "imp_model")
+
+# Observar los modelos
+bound_models
+
+```
+
+### Evaluando los diferentes parámetros en el modelo
+stamos imputando nuestros datos por una razón: ¡queremos analizar los datos!
+
+En este ejemplo, estamos interesados en predecir la temperatura del mar, así que vamos a construir un modelo lineal que prediga la temperatura del mar.
+
+Ajustaremos este modelo a cada uno de los conjuntos de datos que creamos y luego exploraremos los coeficientes en los datos.
+
+Los objetos de la lección anterior (`ocean_cc`, `ocean_imp_lm_wind`, `ocean_imp_lm_all` y `bound_models`) se cargan en el espacio de trabajo.
+
+```{r}
+# Crear el resumen del modelo para cada conjunto de datos
+model_summary <- bound_models %>% 
+  group_by(imp_model) %>%
+  nest() %>%
+  mutate(mod = purrr::map(data, ~lm(sea_temp_c ~ air_temp_c + humidity + year, data = .)),
+         res = purrr::map(mod, residuals),
+         pred = purrr::map(mod, predict),
+         tidy = purrr::map(mod, broom::tidy))
+
+# Explorar los coeficientes en el modelo
+model_summary %>% 
+    select(imp_model,tidy) %>%
+	unnest()
+
+best_model <- "imp_lm_all"
+```
+
+
+# Evaluación de la no respuesta
+
+## Actividad 
 
 Considerando el siguien set de datos.
 
@@ -191,7 +1151,7 @@ biopics %>%
 	colSums()
 ```
 
-### Reconociendo los mecanismos de datos faltantes
+## Reconociendo los mecanismos de datos faltantes
 
 En este ejercicio, se presentarán seis escenarios diferentes en los que faltan algunos datos. Intenta asignar a cada uno de ellos el mecanismo de datos faltantes más probable. Como recordatorio, aquí hay algunas pautas generales:
 
@@ -202,9 +1162,9 @@ Si la razón de la falta de datos depende del valor faltante en sí mismo, es MN
 ![alt text](procesos_sp.png)
 
 
-##### Prueba t para perdida MAR
+### Prueba t para perdida MAR
 
-###### **Preparación de los datos**
+#### **Preparación de los datos**
 
 De los tres, MAR es posiblemente el más importante de detectar, ya que muchos métodos de imputación asumen que los datos son MAR. En este ejercicio práctico con `R`, buscaremos identificar si el patrón de pérdida es MAR.
 
@@ -228,7 +1188,7 @@ missing_earnings_females <- biopics %>%
   pull(missing_earnings)
 ```
 
-###### **Interpretación**
+#### Interpretación
 
 En el ejercicio anterior, hemos preparado dos vectores con los valores faltantes de ingresos para cada sexo: `perdidos_gastos_hombres` y `perdidos_gastos_mujeres`. Ambos están disponibles en tu espacio de trabajo. Ahora es posible realizar la **prueba t** para verificar si sus medias difieren significativamente entre sí con el siguiente script
 
@@ -247,10 +1207,10 @@ El gráfico de agregación proporciona la respuesta a la pregunta básica que un
 En este ejercicio, primero aplicaremos el gráfico de agregación para los datos de `biopics` y luego practicarás sacando conclusiones basadas en él. ¡Vamos a hacer algunos gráficos!
 
 ```{r}
-# Load the VIM package
+# Carga el paquete VIM
 library(VIM)
 
-# Draw an aggregation plot of biopics
+# Dibuja un aggregation plot para biopics
 biopics %>% 
 	aggr(combined = TRUE, numbers = TRUE)
 ```
@@ -278,12 +1238,14 @@ En este ejercicio, dibujarás un gráfico de Mosaico para investigar el porcenta
 
 
 ```{r}
-# Draw a spine plot to analyse missing values in earnings by sub_race
+# Dibujamos un spine plot para visualizar los valores 
+# perdidos en earnings por sub_race
 
 biopics %>% 
 	dplyr::select(sub_race,earnings) %>%
 	spineMiss()
 ```
+
 ### Cuestiones aclaratorias
 
 Basándose en la gráfica de Mosaico que acabas de crear, ¿cuál de las siguientes afirmaciones es falsa?
@@ -306,13 +1268,14 @@ En este ejercicio, comenzarás por crear una variable ficticia que indique si Es
 
 
 ```{r}
-# Prepare data for plotting and draw a mosaic plot
+# Preparar los datos para trazar un gráfico y dibujar un gráfico de mosaico
 biopics %>%
-	# Create a dummy variable for US-produced movies
-	mutate(is_US_movie = grepl("US", country)) %>%
-	# Draw mosaic plot
+	# Crear una variable ficticia para películas producidas en EE. UU.
+	mutate(es_pelicula_US = grepl("US", country)) %>%
+	# Dibujar un gráfico de mosaico
 	mosaicMiss(highlight = "earnings", 
-             plotvars = c("is_US_movie", "sub_sex"))
+             plotvars = c("es_pelicula_US", "sub_sex"))
+
 
 
 ```
@@ -339,7 +1302,7 @@ tao %>%
   is.na() %>% 
   colSums()
 
-# Calculate the number of missing values in air_temp per year
+# Calcula el numero de valores perdidos o missing values en air_temp por year
 tao %>% 
   group_by(year) %>% 
   summarize(num_miss = sum(is.na(air_temp)))
@@ -353,12 +1316,13 @@ Para averiguar si estas preocupaciones son válidas, en este ejercicio realizar�
 
 ```{r}
 tao_imp <- tao %>% 
-  # Create a binary indicator for missing values in air_temp
+  # Crear un indicador binario para valores faltantes en air_temp
   mutate(air_temp_imp = ifelse(is.na(air_temp), TRUE, FALSE)) %>%
-  # Impute air_temp with its mean
-  mutate(air_temp = ifelse(is.na(air_temp), mean(air_temp, na.rm = TRUE), air_temp))
+  # Imputar air_temp con su promedio
+  mutate(air_temp = ifelse(is.na(air_temp), mean(air_temp,
+                                                 na.rm = TRUE), air_temp))
 
-# Print the first 10 rows of tao_imp
+# Imprimir las primeras 10 filas de tao_imp
 head(tao_imp, 10)
 ```
 ```{r}
@@ -391,21 +1355,23 @@ La imputación por hot-deck es un método simple que reemplaza cada valor faltan
 En este ejemplo, lo probaremos en el conjunto de datos `tao`. Imputaremos los valores faltantes en la columna de temperatura del aire `air_temp` por hot-deck y luego visualizaremos un gráfico de margen (`marginplot`) para analizar la relación entre los valores imputados y la columna de temperatura de la superficie del mar `sea_surface_temp`.
 
 ```{r}
-# Load VIM package
+# Cargar el paquete VIM
 library(VIM)
 
-# Impute air_temp in tao with hot-deck imputation
+# Imputar la temperatura del aire en tao con imputación por hot-deck
 tao_imp <- hotdeck(tao, variable = "air_temp")
 
-# Check the number of missing values in each variable
+# Comprobar la cantidad de valores faltantes en cada variable
 tao_imp %>% 
 	is.na() %>% 
 	colSums()
 
-# Draw a margin plot of air_temp vs sea_surface_temp
+# Dibujar un gráfico de márgenes de temperatura del aire vs. temperatura
+# de la superficie del mar
 tao_imp %>% 
 	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
 	marginplot(delimiter = "imp")
+
 ```
  ¿Se ve bien la imputación? Observa las observaciones en la parte superior izquierda del gráfico con los datos de `air_temp` imputados y los valores altos en `sea_surface_temp`. Estas observaciones deben haber sido precedidas por observaciones con bajos valores de `air_temp` en el `data frame`, y por lo tanto, después de la imputación hot-deck, terminaron siendo valores atípicos con  `air_temp` bajos y `sea_surface_temp` altos.
  
@@ -416,18 +1382,20 @@ Un truco que puede ayudar cuando la imputación por hot-deck rompe las relacione
 Por ejemplo, se podría esperar que la temperatura del aire dependa del tiempo, ya que estamos viendo que las temperaturas promedio aumentan debido al calentamiento global. El indicador de tiempo que tenemos disponible en los datos de `tao` es una variable categórica, `year`. Primero, comprobaremos si la temperatura media del aire es diferente en cada uno de los dos años estudiados y luego ejecutaremos hot-deck dentro de los dominios de los años. Finalmente, volveremos a crear el `marginplot` para evaluar el rendimiento de la imputación.
 
 ```{r}
-# Calculate mean air_temp per year
+# Calcular la temperatura media del aire por año
 tao %>% 
 	group_by(year) %>% 
-	summarize(average_air_temp = mean(air_temp, na.rm = TRUE))
+	summarize(temperatura_media_aire = mean(air_temp, na.rm = TRUE))
 
-# Hot-deck-impute air_temp in tao by year domain
+# Imputar temperatura del aire en tao por dominio de año utilizando hot-deck
 tao_imp <- hotdeck(tao, variable = "air_temp", domain_var = "year")
 
-# Draw a margin plot of air_temp vs sea_surface_temp
+# Dibujar un gráfico de márgenes de temperatura del aire vs. temperatura de
+# la superficie del mar
 tao_imp %>% 
 	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
 	marginplot(delimiter = "imp")
+
 ```
 Los resultados se ven mucho mejor esta vez. Sin embargo, si observas la esquina superior derecha del gráfico, verás que la varianza en los valores imputados (naranja) es algo mayor que entre los valores observados (azul). Veamos si podemos mejorar aún más en el próximo ejercicio.
 
@@ -439,13 +1407,16 @@ Otro truco que puede mejorar el rendimiento de la imputación hot-deck es ordena
 Por ejemplo, en todos los `marginplot` que hemos estado usando recientemente, se ha visto que la temperatura del aire está fuertemente correlacionada con la temperatura de la superficie del mar, lo cual tiene mucho sentido. Podemos aprovechar este conocimiento para mejorar la imputación hot-deck. Si primero ordenamos los datos por `sea_surface_temp`, entonces cada valor imputado de `air_temp` vendrá de un donante con una `sea_surface_temp` similar.
 
 ```{r}
-# Hot-deck-impute air_temp in tao ordering by sea_surface_temp
+# Imputar temperatura del aire en tao utilizando hot-deck, ordenando por
+# temperatura de la superficie del mar
 tao_imp <- hotdeck(tao, variable = "air_temp", ord_var = "sea_surface_temp")
 
-# Draw a margin plot of air_temp vs sea_surface_temp
+# Dibujar un gráfico de márgenes de temperatura del aire vs. temperatura
+# de la superficie del mar
 tao_imp %>% 
 	select(air_temp, sea_surface_temp, air_temp_imp) %>% 
 	marginplot(delimiter = "imp")
+
 ```
 
 Esta vez la imputación parece no afectar la relación entre las temperaturas del aire y la superficie del mar: si no fuera por los colores, probablemente no sabriamos cuáles son los valores imputados. La imputación hot-deck, posiblemente mejorada con la imputación por dominios o el ordenamiento, es un método rápido y sencillo que puede funcionar bien en muchas situaciones. Sin embargo, a veces puede ser necesario un enfoque más complejo. 
@@ -462,38 +1433,44 @@ Intentemos imputar `humidity` en los datos de `tao` utilizando tres valores dife
 Imputamos `humidity` con la imputación de kNN usando 30 vecinos y visualizadolo mediante un `marginplot()` de `sea_surface_temp` vs `humidity`.
 
 ```{r}
-# Impute humidity using 30 neighbors
+# Imputar humedad utilizando 30 vecinos
 tao_imp <- kNN(tao, k = 30, variable = "humidity")
 
-# Draw a margin plot of sea_surface_temp vs humidity
+# Dibujar un gráfico de márgenes de temperatura de la superficie del 
+# mar vs. humedad
 tao_imp %>% 
 	select(sea_surface_temp, humidity, humidity_imp) %>% 
 	marginplot(delimiter = "imp", main = "k = 30")
+
 ```
 
 Ahora, imputamos `humidity` con imputación kNN usando 15 vecinos y vemos mediante el `marginplot` de `sea_surface_temp` vs `humidity`.
 
 ```{r}
-# Impute humidity using 15 neighbors
+# Imputar la humedad utilizando 15 vecinos
 tao_imp <- kNN(tao, k = 15, variable = "humidity")
 
-# Draw a margin plot of sea_surface_temp vs humidity
+# Dibujar un gráfico de márgenes de temperatura de la 
+# superficie del mar vs. humedad
 tao_imp %>% 
 	select(sea_surface_temp, humidity, humidity_imp) %>% 
 	marginplot(delimiter = "imp", main = "k = 15")
+
 ```
 
 Finalmente, imputamos `humidity` con imputación kNN usando 5 vecinos y visualizando los resulados mediante `marginplot` de `sea_surface_temp` vs `humidity`.
 
 
 ```{r}
-# Impute humidity using 5 neighbors
+# Imputar la humedad utilizando 5 vecinos
 tao_imp <- kNN(tao, k = 5, variable = "humidity")
 
-# Draw a margin plot of sea_surface_temp vs humidity
+# Dibujar un gráfico de márgenes de temperatura de la 
+# superficie del mar vs. humedad
 tao_imp %>% 
 	select(sea_surface_temp, humidity, humidity_imp) %>% 
 	marginplot(delimiter = "imp", main = "k = 5")
+
 ```
 
 ### kNN trucos y consejos I: ponderando los donantes
@@ -504,10 +1481,10 @@ En este ejercicio, aplicamos la agregación ponderada por distancia mientras imp
 
 
 ```{r}
-# Load the VIM package
+# Cargar el paquete VIM
 library(VIM)
 
-# Impute humidity with kNN using distance-weighted mean
+# Imputar la humedad con kNN utilizando la media ponderada por distancia
 tao_imp <- kNN(tao, 
                k = 5, 
                variable = "humidity", 
@@ -517,6 +1494,7 @@ tao_imp <- kNN(tao,
 tao_imp %>% 
 	select(sea_surface_temp, humidity, humidity_imp) %>% 
 	marginplot(delimiter = "imp")
+
 ```
 ### Trucos y consejos de kNN II: ordenar variables
 
@@ -526,21 +1504,23 @@ Por esta razón, una buena práctica es ordenar las variables por el número de 
 
 
 ```{r}
-# Get tao variable names sorted by number of NAs
+# Obtener los nombres de las variables de tao ordenados por la cantidad
+# de valores faltantes
 vars_by_NAs <- tao %>%
   is.na() %>%
   colSums() %>%
   sort(decreasing = FALSE) %>% 
   names()
 
-# Sort tao variables and feed it to kNN imputation
+# Ordenar las variables de tao y alimentarlas en la imputación de kNN
 tao_imp <- tao %>% 
   select(vars_by_NAs) %>% 
-  kNN(k= 5)
+  kNN(k = 5)
 
 tao_imp %>% 
-	select(sea_surface_temp, humidity, humidity_imp) %>% 
-	marginplot(delimiter = "imp")
+  select(sea_surface_temp, humidity, humidity_imp) %>% 
+  marginplot(delimiter = "imp")
+
 ```
 El kNN que acabamos de programar debería ser más preciso y resistente a imputaciones defectuosas, así que recordemos ordenar las variables primero antes de realizar la imputación con kNN. 
 
@@ -599,12 +1579,16 @@ missing_air_temp <- tao_imp$air_temp_imp
 missing_humidity <- tao_imp$humidity_imp
 
 for (i in 1:5) {
-  # Define air_temp como NA en los lugares donde faltaban originalmente y re-imputa
-  tao_imp$air_temp[missing_air_temp] <- NA
-  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
-  # Define humidity como NA en los lugares donde faltan originalmente y  re-imputa
-  tao_imp$humidity[missing_humidity] <- NA
-  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
+ # Define air_temp como NA en los lugares donde faltaban originalmente y
+  # re-imputa
+ tao_imp$air_temp[missing_air_temp] <- NA
+ tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude +
+                        sea_surface_temp + humidity)
+ # Define humidity como NA en los lugares donde faltan originalmente y
+ # re-imputa
+ tao_imp$humidity[missing_humidity] <- NA
+ tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude +
+                        sea_surface_temp + air_temp)
 }
 ```
 Esa es una aproximación apropiada a la imputación basada en modelos que acabamos de codificar, pero, ¿cómo sabemos que 5 es el número adecuado de iteraciones para ejecutar?.
@@ -641,10 +1625,13 @@ for (i in 1:5) {
   prev_iter <- tao_imp
   # Imputa air_temp y humidity en las ubicaciones que originalmente faltaban
   tao_imp$air_temp[missing_air_temp] <- NA
-  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude + sea_surface_temp + humidity)
+  tao_imp <- impute_lm(tao_imp, air_temp ~ year + latitude +
+                         sea_surface_temp + humidity)
   tao_imp$humidity[missing_humidity] <- NA
-  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude + sea_surface_temp + air_temp)
-  # Calcula MAPC para air_temp y humidity y los incluye a la iteración anterior de MAPC
+  tao_imp <- impute_lm(tao_imp, humidity ~ year + latitude +
+                         sea_surface_temp + air_temp)
+  # Calcula MAPC para air_temp y humidity y los incluye a la
+  # iteración anterior de MAPC
   diff_air_temp <- c(diff_air_temp, mapc(prev_iter$air_temp, tao_imp$air_temp))
   diff_humidity <- c(diff_humidity, mapc(prev_iter$humidity, tao_imp$humidity))
 }
@@ -764,10 +1751,12 @@ missing_is_hot <- tao_imp$is_hot_imp
 missing_humidity <- tao_imp$humidity_imp
 
 for (i in 1:3) {
-  # Define is_hot como NA en los lugares donde fue originalmente missing y re-imputa
+  # Define is_hot como NA en los lugares donde fue originalmente missing
+  # y re-imputa
   tao_imp$is_hot[missing_is_hot] <- NA
   tao_imp <- impute_logreg(tao_imp, is_hot ~ sea_surface_temp)
-  # Define humidity como NA en los lugares donde fue originalmente missing y re-imputa
+  # Define humidity como NA en los lugares donde fue originalmente
+  # missing y re-imputa
   tao_imp$humidity[missing_humidity] <- NA
   tao_imp <- impute_lm(tao_imp, humidity ~ sea_surface_temp + air_temp)
 }
@@ -817,7 +1806,8 @@ la proporción de entradas falsamente clasificadas (PFC) para todas las variable
 Sin embargo, podría darse el caso de que el modelo de imputación funcione muy bien para una variable continua y muy mal para otra. Para diagnosticar tales casos, basta con decirle a `missForest` que produzca estimaciones de error por variable. Esto se hace estableciendo el argumento `variablewise` en `TRUE`.
 
 ```{r}
-# Imputa los datos de biopics con missForest calculando los errores por variable
+# Imputa los datos de biopics con missForest calculando
+# los errores por variable
 imp_res <- missForest(biopics, variablewise = TRUE)
 
 # Extrae e imprime los errores de imputacion
@@ -854,7 +1844,8 @@ Aumentar cada uno de ellos puede mejorar la precisión del modelo de imputación
 # Determina el tiempo inicial del primer enfoque
  t <- proc.time()
 
-# Define el numero de arboles a 5 y el numero de variables usadas para dividir en 2
+# Define el numero de arboles a 5 y el numero de variables
+# usadas para dividir en 2
 imp_res <- missForest(biopics, mtry = 2, ntree = 5)
 tiempo1<-proc.time() - t
 # Imprime los resultados de los errores de la imputacion
@@ -864,7 +1855,8 @@ print(imp_res$OOBerror)
 ```{r}
 # Determina el tiempo inicial del segundo enfoque
  t <- proc.time()
-# Define el numero de arboles a 50 y el numero de variables usadas para dividir en 6
+# Define el numero de arboles a 50 y el numero de variables usadas para
+# dividir en 6
 imp_res <- missForest(biopics, mtry = 6, ntree = 50)
 tiempo2<-proc.time() - t
 # Imprime los errores resultantes de la imputacion
@@ -877,10 +1869,6 @@ tiempo1
 tiempo2
 ```
 
-
-##################################################################
-##################################################################
-##################################################################
 
 ### La imputación y el modelado en una función
 
@@ -1092,7 +2080,8 @@ En este último caso, hemos utilizado `mice` para imputar los datos de `africa`.
 
 ```{r}
 # Ajusta im regresion lineal a cada data set  imputado
-lm_multiimp <- with(africa_multiimp, lm(gdp_pc ~ country + year + trade + infl + civlib))
+lm_multiimp <- with(africa_multiimp, lm(gdp_pc ~ country +
+                                          year + trade + infl + civlib))
 
 # Combina las estimaciones por las reglas de Rubin (pool)
 lm_pooled <- pool(lm_multiimp)

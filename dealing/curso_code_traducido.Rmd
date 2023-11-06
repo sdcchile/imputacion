@@ -23,19 +23,19 @@ library(tidyr)
 library(ggplot2)
 ```
 
-# Descripción del curso
+# Descripción del taller
 
-El curso ofrecido por el Instituto Nacional de Estadísticas de Chile (INE) se centra en la importancia de manejar y analizar datos faltantes, que son una realidad en cualquier análisis de datos del mundo real. Los valores faltantes pueden aparecer por diversas razones, desde problemas de medición hasta problemas de calidad de los datos, y su presencia puede dificultar la comprensión y la interpretación de los análisis.
+El taller ofrecido por el Instituto Nacional de Estadísticas de Chile (INE) se centrará en la importancia de manejar y analizar datos faltantes, que son una realidad en cualquier análisis de datos del mundo real. Los valores faltantes pueden aparecer por diversas razones, desde problemas de medición hasta problemas de calidad de los datos, y su presencia puede dificultar la comprensión y la interpretación de los análisis.
 
-En este contexto, el curso del INE brinda a los participantes las habilidades y herramientas necesarias para manejar los datos faltantes de manera efectiva y mejorar la calidad de sus análisis. En particular, se utiliza el paquete R de `naniar`, una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
+En este contexto, el taller del INE brinda a los participantes las habilidades y herramientas necesarias para manejar los datos faltantes de manera efectiva y mejorar la calidad de sus análisis. En particular, se utiliza el paquete R de `naniar`, una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
 
-El curso consta de varios capítulos, cada uno enfocado en un aspecto específico del manejo de datos faltantes. En el primer capítulo se aprende a detectar, contar y resumir la falta de datos, utilizando técnicas como la función `is.na()` y las funciones de resumen como `sum()`, `mean()`, entre otras. Además, se enseña cómo explorar los patrones de datos faltantes en diferentes variables y casos, y cómo detectar posibles sesgos y patrones subyacentes en los datos.
+El taller consta de varios capítulos, cada uno enfocado en un aspecto específico del manejo de datos faltantes. En el primer capítulo se aprende a detectar, contar y resumir la falta de datos, utilizando técnicas como la función `is.na()` y las funciones de resumen como `sum()`, `mean()`, entre otras. Además, se enseña cómo explorar los patrones de datos faltantes en diferentes variables y casos, y cómo detectar posibles sesgos y patrones subyacentes en los datos.
 
 En los capítulos siguientes, se aborda la imputación de valores faltantes, es decir, cómo llenar los vacíos en los datos utilizando diferentes técnicas de imputación, como la imputación por media, la imputación múltiple y la regresión de los valores faltantes. También se aprende a evaluar la calidad de los datos imputados y a tomar decisiones basadas en estos conjuntos de datos imputados.
 
-Además, el curso incluye una sección dedicada a la visualización de datos faltantes, donde se aprende a producir visualizaciones generales para todo el conjunto de datos y para las variables, casos y otros resúmenes, y cómo explorar estos en los grupos.
+Además, el taller incluye una sección dedicada a la visualización de datos faltantes, donde se aprende a producir visualizaciones generales para todo el conjunto de datos y para las variables, casos y otros resúmenes, y cómo explorar estos en los grupos.
 
-En resumen, el curso del INE proporciona las habilidades y herramientas necesarias para manejar, explorar y analizar datos faltantes de manera efectiva y mejorar la calidad de los análisis de datos del mundo real.
+En resumen, el taller del INE proporciona las habilidades y herramientas necesarias para manejar, explorar y analizar datos faltantes de manera efectiva y mejorar la calidad de los análisis de datos del mundo real.
 
 #Capitulo 1 
 
@@ -49,16 +49,16 @@ En resumen, el curso del INE proporciona las habilidades y herramientas necesari
 ## Trasncripción
 
 1. Introducción a los datos faltantes
-Para este curso se utilizarán herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
+Para este taller se utilizarán herramientas como `tidyverse` y el paquete R de `naniar` para enseñar a manejar y analizar datos faltantes de manera efectiva. El paquete `naniar` es una herramienta muy útil para explorar, visualizar y manejar valores faltantes en R.
 
 2. Introducción
 La estadística Gertrude Mary Cox dijo una vez: "Lo mejor que se puede hacer con los datos faltantes es no tener ninguno". Si bien esto es cierto, no es el mundo en el que vivimos. Trabajar con datos del mundo real significa trabajar con datos faltantes. Para ser un gran analista, necesitas saber cómo lidiar con los valores faltantes. Comprender cómo funcionan los datos faltantes es importante, ya que pueden tener efectos inesperados en tu análisis. Por ejemplo, ajustar un modelo lineal en datos con valores faltantes elimina fragmentos de datos. Esto significa que tus decisiones no se basan en la evidencia correcta. Reemplazar los valores faltantes, lo que se llama imputación, debe hacerse con mucho cuidado, ya que insertar solo la media puede llevar a estimaciones y decisiones deficientes.
 
 3. ¿Qué aprenderás?
-En este curso aprenderás sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes.
+En este taller aprenderás sobre qué son los valores faltantes, cómo encontrar datos faltantes, cómo manipular y limpiar datos faltantes, por qué faltan datos y cómo imputar valores faltantes.
 
 4. Conocimientos previos
-Para este curso, asumiré que tienes experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. En este primer capítulo, presentamos los valores faltantes y cómo verificarlos y contarlos.
+Para este taller, asumiré que tienes experiencia básica a intermedia con R, experiencia en la creación de gráficos utilizando `ggplot2`, experiencia en el uso de `dplyr` para manipular datos y experiencia en ajustar modelos lineales en R. En este primer capítulo, presentamos los valores faltantes y cómo verificarlos y contarlos.
 
 5. ¿Qué son los valores faltantes?
 Antes de comenzar, debemos definir los valores faltantes. Los valores faltantes son valores que deberían haberse registrado, pero no lo fueron. Piensa en esto de esta manera: puedes no haber registrado accidentalmente que viste un pájaro, esto es un valor faltante. Esto es diferente a registrar que no se observaron pájaros. R almacena los valores faltantes como `NA`, que significa no disponible.
@@ -909,7 +909,7 @@ ggplot(ocean_imp_mean_gather,
 
 Existen muchos paquetes de imputación en R. Nos enfocaremos en usar el paquete `simputation`, que proporciona una interfaz simple y potente para realizar imputaciones.
 
-Construir un buen modelo de imputación es muy importante, pero es un tema complejo: hay tanto para construir un buen modelo de imputación como para construir un buen modelo estadístico. En este curso, nos enfocaremos en cómo evaluar las imputaciones.
+Construir un buen modelo de imputación es muy importante, pero es un tema complejo: hay tanto para construir un buen modelo de imputación como para construir un buen modelo estadístico. En este taller, nos enfocaremos en cómo evaluar las imputaciones.
 
 Primero, vamos a ver cómo utilizar la función `impute_lm()`, que imputa valores de acuerdo a un modelo lineal especificado.
 

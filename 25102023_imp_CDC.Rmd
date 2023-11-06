@@ -139,11 +139,23 @@ Conociendo nuestra realidad quedamos en posición de poder orientarnos usando co
 
 
 ![Mapa Conceptual de la Imputación](mapa_conceptual.png)
+### En caso de no respuesta total
+
+1. Una acción plausible es observar el diseño del muestreo sobre el cual se aplicó la encuesta, dado que este, proveerá los factores proporcionales a la inversa de la probabilidad de ocurrencia del evento. Como existen datos faltantes en algunos registros, dichos factores denominados de expansión, podemos calibrarlos mediante sucesivas aproximaciones recursivas. 
+
+2. Tambien podemos recurrir a información auxiliar proveniente de registros administrativos, en este caso es necesario preparar un control de calidad, que abarque a lo menos las siguientes dimensiones: completitud, exactitud, actualidad, disponibilidad y grado de comprensión de la información contenida, para que dicha información quede disponibilizada con el fin de ser utilizada para estimar los datos faltantes.
+
+### En caso de no respuesta parcial
+
+1. El modelamiento de imputación para no respuesta parcial es un amplio campo de investigación de a lo menos unos 20 años. Es necesario tomar la distinción entre imputación simple para el caso de una sola estimación, e imputación multiple para subprocesos de cálculo.
+
+  - Para la imputación simple, usamos métodos en el escenario en que determinamos que los datos faltantes sean valores ausentes verdaderos. Por ejemplo, si la pregunta es el número de hijos nacidos vivos en los trabajos de parto, solo es aplicable a una mujer, por lo tanto que un hombre que no la conteste es valido. Para mayor detalle ver @de2011handbook. 
+  La literatura ha dividido el esfuerzo necesario entre variables categóricas, tales como la estratificación socio-económica, nivel educativo alcanzado, etc. Y las variables continuas donde los valores faltantes podemos encontrarlos al interior de interválos de números reales. 
+  
+  - Para la imputación múltiple, será necesario utilizar el comportamiento de las distribuciones de los datos disponibles, con lo cual, podemos implementar estrategias que faciliten la completación de los datos faltantes, observando las caracteristicas particulares de las distribuciones observadas. En este caso, la literatura disponible coincide con los casos de variables continuas, categóricas y multinomiales. En el caso multinomial vemos desagregación en componentes de las variables, donde cada componente en el caso de respuesta total, tiene una probabilidad de ocurrencia, que debiera verse reflejada, en los datos agregados toda vez que haya concluido el proceso.
 
 
-
-
-
+2. El uso de donantes contiene estrategías de uso de información presente acerca de la propia variable, los casos más distinguidos son el vecino más cercano, la preponderancia de la media, el uso alternativo de la mediana y métodos complejos basados en los anteriores.
 
 
 
@@ -179,6 +191,9 @@ Una vez que se han recopilado los datos, estos debe ser procesados, ya sea ingre
 Además de los errores, también pueden surgir datos faltantes en la recopilación de datos. Estos datos faltantes pueden deberse a que un encuestado no conoce la respuesta a una pregunta o se niega a proporcionarla.
 
 La falta de datos es un problema bien conocido que deben afrontar básicamente todos los institutos que recopilan datos sobre personas o empresas. En la literatura estadística, por lo tanto, se presta mucha atención a los datos faltantes. La solución más común para manejar los datos faltantes en conjuntos de datos es la imputación, donde los valores faltantes se estiman y se completan. Siendo relevante que la  imputación preserve la distribución estadística del conjunto de datos, siendo por lo tanto, un problema complejo, especialmente para datos de alta dimensión.
+
+xxxxxx
+INDICAR EN ESTA PARTE COMO ESTA ESTRUCTURADO EL DOCUMENTO, CUAL ES EL ALCANCE, QUE CONTIENE , ETC..
 
 
 ### El proceso estadístico
