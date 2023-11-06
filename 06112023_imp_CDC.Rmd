@@ -83,6 +83,18 @@ rm(list = ls())
 
 # Introducción
 
+En el primer capítulo, proporcionamos una breve introducción sobre la importancia de la imputación en un Instituto Nacional de Estadística, junto con un mapa conceptual que guía el proceso para garantizar la coherencia de la imputación. En el segundo capítulo, abordamos el problema de los datos faltantes, definiendo conceptos relevantes y las circunstancias que rodean este tema. En el núcleo de este capítulo, analizamos en detalle los mecanismos que generan datos faltantes y el concepto de ignorabilidad.
+
+El tercer capítulo se centra en los métodos de imputación simples o tradicionales, que incluyen la imputación por la media, regresión, y por donantes, entre otros enfoques. El cuarto capítulo presenta un breve resumen de la imputación multivariante, incorporando modelos y el método EM.
+
+En el quinto capítulo, **se encuentra el resumen del apartado de Miguel**. El sexto capítulo aborda la imputación por máxima verosimilitud para datos incompletos, donde se exploran con más detalle los fundamentos del algoritmo EM y su aplicación en datos categóricos, continuos y mezclas de distribuciones.
+
+El séptimo capítulo se dedica a los métodos de pseudo-verosimilitud para datos incompletos. En el octavo capítulo, se profundiza en la imputación bayesiana con datos incompletos. En el noveno capítulo, nos adentramos en la Imputación Múltiple, y finalmente, en el décimo capítulo, se presentan algunas implementaciones generales de los métodos de imputación múltiple.
+
+Además, en la sección de anexos, hemos preparado un mini taller destinado a introducir a los usuarios de R en algunas herramientas relevantes para definir valores perdidos, identificarlos, contarlos y determinar patrones de pérdida. Luego, se aplican técnicas de imputación utilizando las bibliotecas nativas del software R.
+
+
+
 ## Definición
 
 La guía con lineamientos y orientaciones metodológicas para la imputación de datos estadísticos es un documento que identifica y describe las herramientas y métodos de imputación, considerando aspectos de la imputación por donantes, imputación basada en modelos y entre ellas, tanto los métodos de imputación simple como los métodos de imputación múltiple. Se incluyen ejemplos de imputación en oficinas de estadísticas considerando encuestas conocidas por el público.
@@ -139,7 +151,6 @@ Conociendo nuestra realidad quedamos en posición de poder orientarnos usando co
 
 
 ![Mapa Conceptual de la Imputación](mapa_imp_lissette.png)
-
 ### En caso de no respuesta total
 
 1. Una acción plausible es observar el diseño del muestreo sobre el cual se aplicó la encuesta, dado que este, proveerá los factores proporcionales a la inversa de la probabilidad de ocurrencia del evento. Como existen datos faltantes en algunos registros, dichos factores denominados de expansión, podemos calibrarlos mediante sucesivas aproximaciones recursivas. 
@@ -193,8 +204,6 @@ Además de los errores, también pueden surgir datos faltantes en la recopilaci�
 
 La falta de datos es un problema bien conocido que deben afrontar básicamente todos los institutos que recopilan datos sobre personas o empresas. En la literatura estadística, por lo tanto, se presta mucha atención a los datos faltantes. La solución más común para manejar los datos faltantes en conjuntos de datos es la imputación, donde los valores faltantes se estiman y se completan. Siendo relevante que la  imputación preserve la distribución estadística del conjunto de datos, siendo por lo tanto, un problema complejo, especialmente para datos de alta dimensión.
 
-xxxxxx
-INDICAR EN ESTA PARTE COMO ESTA ESTRUCTURADO EL DOCUMENTO, CUAL ES EL ALCANCE, QUE CONTIENE , ETC..
 
 
 ### El proceso estadístico
