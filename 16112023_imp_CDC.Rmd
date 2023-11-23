@@ -250,7 +250,6 @@ Comprender la distinción entre MCAR, MAR y MNAR es fundamental porque diferente
 
 
 ## Definciones importantes acerca de datos incompletos
-(https://stefvanbuuren.name/fimd/sec-idconcepts.html)
 
 
 Existen diversas técnicas estadísticas que abordan problemas relacionados con datos incompletos. Supongamos que nuestro interés radica en conocer el ingreso promedio $Q$ de una determinada población. Si tomamos una muestra de dicha población, es probable que las unidades no incluidas en la muestra presenten valores faltantes,porque no han sido medidos. De manera que se determine de forma inmediata el promedio de la población, que se vuelve imposible, dado que la existencia de uno o más valores faltantes hacen indefinido el cálculo del promedio. Así, tenemos qué el enfoque de datos incompletos se presenta como un marco conceptual necesario para analizar los datos como un problema de datos faltantes.
@@ -1686,7 +1685,7 @@ $$\int_{}^{}{f\left( X_{mis}|X_{obs},\theta \right)L\left( \theta|X \right)dX_{m
 decimos,
 
 \begin{equation}
-Q(\theta) = L\left( \theta|X_{obs} \right) + H(\theta), (\#eq:816)
+Q(\theta) = L\left( \theta|X_{obs} \right) + H(\theta), (\#eq:818)
 \end{equation}
 
 
