@@ -1,0 +1,950 @@
+---
+title: |
+  \
+  \
+  \
+  ![](logo.png){width=2in}\
+  \
+  \
+  \
+  **Métodos de Imputación basados en la Función de Verosimilitud**\
+  \
+  \
+  \
+subtitle: |
+  \
+  \
+  \
+  **Subdepartamento de Investigación Estadística**\
+  \
+  **Departamento de Metodologías e Innovación Estadística**\
+  \
+  **Instituto Nacional de Estadísticas**\
+  \
+  \
+  \
+author: "**Miguel Alvarado**"
+date: "**Noviembre, 2023**"
+output:
+  bookdown::pdf_document2:
+    includes:
+      in_header: columns2.tex
+    toc: TRUE
+    toc_depth: 4
+bibliography: "referencias_IMP_ML.bib"
+biblio-style: "apalike"
+link-citations: true
+nocite: '@*'
+colorlinks: yes
+fontsize: 11pt
+language:
+  label:
+    thm: 'Teorema '
+header-includes:  
+  - \renewcommand{\and}{\\}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = TRUE)
+```
+
+\newpage
+# Introducción \label{sec:1}
+
+A partir de esta sección se inicia la presentación de los métodos de imputación basados en modelos. Estos métodos, como veremos en las siguientes dos secciones, se basan en dos conceptos fundamentales: la *función de verosimilitud* de los datos^[Dentro de este documento, cuando se utiliza el término "*datos*", nos referimos al *conjunto de datos* o *muestra de datos*, que conforman una *base de datos*. En tal sentido, en este documento se consideran únicamente conjuntos de datos rectangulares; esto es, datos dispuestos como arreglos rectangulares que, en general, pueden representarse a través de *matrices* de datos, donde las filas corresponden a *elementos* (*casos*, *unidades* u *observaciones*, según el contexto), mientras que las columnas corresponden a *variables* que son investigadas en cada uno de los *elementos* que conforman el conjunto de datos. De este modo, las *entradas*, *celdas* o *elementos* de una matriz de datos, que corresponden a números reales, representan los *valores* que fueron informados y/o investigados en cada uno de los elementos, en relación a variables continuas (i.e., ingresos), discretas (i.e., edad); y/o categóricas, que pueden ser ordinales (i.e., nivel de educación) o nominales (i.e., sexo).] y la *ignorabilidad del mecanismo* que genera la *falta de datos*^[Los términos "*falta de datos*" y "*datos faltantes*" son usados de manera indistinta a lo largo de este documento, cuando el *valor* correspondiente en *algunas* variables y para *algunos* elementos del conjunto de datos, es *no observado*.]. La presentación formal de ambos conceptos, así como sus implicancias, se desarrollan en las siguientes secciones; sin embargo, para los propósitos de esta introducción es necesario hacer referencia, al menos en parte, sobre el segundo concepto. En tal sentido, si bien es importante avanzar en la presentación del marco teórico y, en particular, sobre los fundamentos inferenciales de los métodos de imputación basados en modelos, puesto que en estos radica la validez estadística de su implementación; validez que es cuestionada en casi todos los *métodos tradicionales*^[En algunos textos como [@Enders2022, sec.1.7], estos métodos se denominan como *métodos antiguos*.] que fueron presentados en la primera parte de este documento. En efecto, los métodos tradicionales entregan soluciones que, no solo son poco satisfactorias, además, algunos de estos métodos son cuestionables en sí mismos y, por tanto, su aplicación y sus resultados; puesto que tales métodos podrían resultar potencialmente problemáticos debido a que pueden introducir sesgos, independientemente del tipo de mecanismo [@Enders2022, pg.24].
+
+Antes del trabajo de Donal B. Rubin [@Rubin1976], los análisis estadísticos con datos faltantes eran realizados a partir de suponer, implícita o explícitamente, que el *mecanismo* que genera la falta de datos podía ser *ignorado*. Sin embargo, hasta ese entonces, la literatura estadística que estudia esta problemática no había respondido a una pregunta anterior: *¿cuándo es apropiado ignorar el mecanismo que genera los datos faltantes?* [@Rubin1976, pg.581]. En este sentido, los métodos tradicionales simplemente asumen que dicho mecanismo puede ser ignorado, al suponer que la falta de datos ocurre de manera *completamente aleatoria*, pero sin discutir sobre la validez de dicho supuesto. De manera más precisa, estos métodos asumen un tipo particular de mecanismo, uno donde la *falta de datos* es *completamente aleatoria* (*Missing Completly At Random*, MCAR)^[En la Sección (\ref{sec:2.2.1}) de este documento, se encuentra una presentación formal este concepto.]; sin embargo, como se menciona a lo largo de la literatura, tal supuesto resulta sumamente restrictivo [@Enders2022, pg.24] y, a menudo, *poco realista* [@Buuren2012Flexible, pg.7]. Entonces, dado lo poco plausible del supuesto MCAR, los métodos tradicionales y las inferencias que se desprenden de su aplicación, quedan en serio cuestionamiento.
+
+Como se describirá en los siguientes párrafos, los métodos tradicionales dependen de supuestos poco verosímiles y, además, muchos de estos métodos simplemente carecen de algún tipo de fundamento estadístico. Por otro lado, aun cuando la aplicación práctica de los métodos tradicionales es sencilla, algunos de estos métodos pueden dificultar e incluso imposibilitar el cálculo de algunas estimaciones. Por último, en algunos de estos métodos se podrían requerir de la toma de decisiones que quedan al arbitrio de quienes implementan tales métodos. A continuación, de manera sucinta, se discute sobre las limitaciones e inconvenientes que presentan los principales métodos tradicionales.
+
+El método de *análisis de casos completos*, también conocido como *eliminación por lista*, es la forma más simple de lidiar con la falta de datos. En este método se eliminan todos los casos con uno o más datos faltantes en las variables que conforman la muestra de datos. Si el mecanismo es MCAR, el método produce estimaciones insesgadas para las medias, las varianzas y los coeficientes de regresión; no obstante, los errores estándar y niveles de significancia *solo* son correctos para el conjunto reducido de casos completos, pero que a menudo son mayores en relación con todos los datos observados. Una clara desventaja de este método es que potencialmente se puede llegar a eliminar una parte considerable de los casos, especialmente si el número de variables con datos faltantes es grande [@Buuren2012Flexible, pg.8]. En efecto, como se señala en [@LittleRubin2020, pg.47], las desventajas que se derivan de la posible pérdida de información al descartar casos incompletos tiene dos aspectos: *pérdida de precisión* y *sesgo*, cuando el mecanismo no es del tipo MCAR. El grado de sesgo y pérdida de precisión dependen no solo de la fracción de casos completos y del mecanismo de datos faltantes, sino también de la medida en que las unidades completas e incompletas difieren y de las estimaciones de interés [@LittleRubin2020, pg.48].
+
+El método de *eliminación por pares*, también denominado *análisis de casos disponibles*, intenta remediar el problema de la pérdida de casos que se produce en el método anterior. En este método, el cálculo de cualquier estimación de interés para alguna variable, es realizado a partir de los casos disponibles en dicha variable. De este modo, las estimaciones de la variable $V$, se realizan a partir de los casos disponibles en la variable $V$; las estimaciones de la variable $W$ se realizan a partir de los casos disponibles en la variable $W$ y, análogamente, con el resto de las variables. El método es simple, puesto que usa toda la información disponible y produce estimaciones consistentes para las medias, correlaciones y covarianzas bajo el supuesto MCAR [@Buuren2012Flexible, pag.10]. Sin embargo, cuando estas estimaciones se toman en conjunto, aparecen inconvenientes considerables. En principio, las estimaciones pueden estar sesgadas si el mecanismo no es del tipo MCAR [@Buuren2012Flexible, pg.10]. Por otro lado, existen problemas al momento del cálculo computacional; por ejemplo, la matriz de correlación puede no ser definida positiva, lo cual es un requisito para la mayoría de los procedimientos multivariantes. De igual modo, pueden ocurrir correlaciones que no están en el rango unitario $[- 1, + 1]$, un problema que proviene de utilizar diferentes subconjuntos de datos para el cálculo de las varianzas y covarianzas. Otro problema es que no queda claro qué tamaño de muestra debe usarse para calcular los errores estándar [@Buuren2012Flexible, pg.10].
+
+El método de *imputación por el promedio* o *imputación por la media*, es un enfoque de *única* imputación que completa los datos faltantes en alguna variable *continua* con el promedio^[En el caso de variables categóricas, la imputación de los datos faltantes es realizada usando la *moda* de los datos observados [@Buuren2012Flexible, pg.10]. El mismo criterio podría ocuparse en el caso de variables numéricas discretas.] de los datos observados en la variable. Este método no tiene justificación teórica y distorsiona las estimaciones de parámetros, independiente del *mecanismo* que genera la falta de datos [@Enders2022, pg.25], puesto que este método distorsiona la distribución de los datos de varias maneras [@Buuren2012Flexible, pg.11]. El método es una solución rápida y sencilla para abordar la falta de datos. Sin embargo, este método subestima la varianza, altera las relaciones entre las variables, sesga casi cualquier estimación que no sea la media, pero incluso puede sesgar dicha estimación cuando el mecanismo no es MCAR. Por tanto, el uso de este método debe evitarse en general^[Este método de imputación genera sesgos y su uso no suele ser recomendado; no obstante, un refinamiento de este método es imputar a partir del uso de promedios condicionales, dados los valores observados [@LittleRubin2020, pg.70]. Mayor detalle sobre este enfoque se puede encontrar en [@LittleRubin2020, sec.4.2.2].] [@Buuren2012Flexible, pg.11].
+
+El método de *imputación por regresión*, con el propósito de mejorar la imputación de los datos faltantes en la variable de interés, incorpora la información contenida en las otras variables que forman parte del conjunto de datos. El método parte por ajustar un modelo de regresión a partir de los datos observados. Luego, el valor no observado en los datos es reemplazado por los *valores ajustados* (o, *valores estimados*) bajo el modelo ajustado. De este modo, los valores imputados corresponden a los valores más *verosímiles* bajo el modelo ajustado [@Buuren2012Flexible, pg.12]. Sin embargo, al igual que en el método de imputación por la media, el conjunto de valores imputados presenta menor variabilidad que en los valores observados^[La imputación por el promedio se puede considerar como un caso especial del método de imputación por regresión donde las variables explicativas (predictores) son variables indicadoras (*dummies*) para las celdas dentro de las cuales se imputa por el promedio [@LittleRubin2020, pg.68].]. Si bien es posible que cada uno de los valores individuales imputados sean la mejor "estimación" bajo el modelo, resulta poco probable que los valores reales (pero no observados) de la variable imputada tengan tal distribución. La imputación de los datos faltantes a partir de este método también tiene un efecto sobre la correlación. Dado que la correlación de los datos imputados bajo el modelo ajustado es igual a 1 [@Enders2022, pg.27], la correlación para el conjunto de los datos completos se ve necesariamente incrementada, en consecuencia, las varianzas y correlaciones estimadas quedan sesgadas.
+
+Bajo el supuesto que el mecanismo es del tipo MCAR, la imputación por regresión produce estimaciones insesgadas tanto para las medias (igual que el método de imputación por la media), como para los ponderadores del modelo de regresión ajustado para realizar la imputación de los datos faltantes, esto último si las variables explicativas en el modelo están completas. Por otro lado, como se ha mencionado, la variabilidad de los datos imputados queda subestimada de manera sistemática y el grado de subestimación depende de la varianza explicada y de la proporción de datos faltantes [@Buuren2012Flexible, pg.12]. La idea básica detrás de este método de imputación es intuitivamente atractiva: las variables tienden a estar correlacionadas, por lo que los valores faltantes se *reemplazan* por *estimaciones* que vienen de un modelo que toma prestada información importante de los datos observados. Aunque esta idea tiene sentido, como se ha mencionado, las imputaciones resultantes pueden introducir sesgos, cuya naturaleza y magnitud dependen del mecanismo de datos faltantes y varían según las diferentes estimaciones [@Enders2022, pg.27].
+
+El método de *imputación por regresión estocástica* es un refinamiento del método de imputación por regresión, en el cual se agrega *variabilidad* a las predicciones del modelo ajustado [@Buuren2012Flexible, pg.13]. De este modo, este método también ajusta un modelo de regresión a partir de los datos observados, luego el valor no observado en los datos es reemplazado por los *valores ajustados* bajo el modelo ajustado, pero tomando el paso adicional de *agregar* a cada estimación un término de *ruido aleatorio* (*random noise*) desde una distribución normal. Al agregar estos residuos a los valores ajustado, se reduce la correlación [@Buuren2012Flexible, pg.13], se restaura la pérdida de variabilidad de los datos y se eliminan los sesgos asociados al método de imputación por regresión [@Enders2022, pg.28].
+
+El método de imputación por regresión estocástica no resuelve todos los problemas y hay muchas sutilezas que deben tenerse presentes^[Por ejemplo, al añadir un ruido aleatorio a los valores ajustados bajo el modelo ajustado es posible que para valores localizados en los extremos de la distribución, el valor a imputar quede fuera del rango factible de la variable a imputar. Un ejemplo de esto puede encontrarse en [@Buuren2012Flexible, pg.13], en cuyo ejemplo, una parte de las imputaciones son valores negativos en circunstancias que la variable a imputar solo puede tomar valores mayores o iguales a cero.]. No obstante, el método de imputación por regresión estocástica es el *único* método tradicional que, generalmente, es capaz de producir estimaciones insesgadas de los parámetros de interés cuando la *falta de datos* es *aleatoria* (*Missing At Random*, MAR)^[En la Sección (\ref{sec:2.2.2}) de este documento, se encuentra una presentación formal este concepto.]. Más importante aún, la idea central detrás del método de imputación por regresión estocástica (una imputación es igual a un valor ajustado (o estimado) más un ruido aleatorio) constituye la base de técnicas de imputación más avanzadas y, como se verá más adelante, resurge con los métodos bayesianos e imputación múltiple [@Enders2022, pg.29].
+
+El método de *adelantar la última observación* (*Last Observation Carried Forward*, LOCF) es una técnica de datos faltantes para estudios longitudinales. Utilizar el método LOCF en estudios sociales y del comportamiento es bastante poco frecuente, siendo su uso más común en estudios médicos y ensayos clínicos. Como el nombre del método lo indica, la idea es tomar el último valor observado y *adelantarlo* (*trasladarlo*) en reemplazo de los datos faltantes de la actual muestra de datos. El método LOCF es conveniente en el sentido que genera un conjunto de datos completo; sin embargo, este método asume que no existen cambios desde la última observación realizada y/o durante el período de tiempo en que se genera la nueva medición. La creencia popular indicaría que imputar los datos faltantes con datos *estables* en el tiempo, produciría una estimación conservadora de las diferencias entre los grupos bajo estudio. Sin embargo, la investigación empírica muestra que esto no es necesariamente cierto, ya que el método también puede exagerar las diferencias entre estos grupos. En efecto, la dirección y la magnitud del sesgo que se produce dependen de las características específicas de los datos, pero es probable que el método LOCF produzca estimaciones sesgadas de los parámetros de interés, incluso asumiendo que el mecanismo es del tipo MCAR [@Enders2022, pg.31].
+
+El método de imputación *Hot-Deck* imputa los valores faltantes utilizando los valores observados en casos "*similares*" en el conjunto de datos, estos últimos usualmente denominados como "*donantes*"^[En este método, la imputación de los valores faltantes de un caso es realizada con los valores observados en algún otro caso *similar* al que se busca imputar. Sin embargo, cuando existen dos o más casos *similares*, pero con valores observados diferentes en las variables a imputar, la decisión sobre cuál caso tomar como *donante*, queda al arbitrio de quien realiza la imputación.]. Este método es común en la práctica de las encuestas y puede implicar esquemas muy elaborados para seleccionar los casos donantes^[En [@LittleRubin2020, sec.4.3.2] se puede encontrar mayor detalle sobre variantes del método Hot-Deck.]. La ventaja del método Hot-Deck es que, a diferencia del método de imputación por la media, la distribución de los valores de la variable a imputar no queda distorsionada por las imputaciones; sin embargo, el incremento en la varianza que produce el método Hot-Deck puede ser no despreciable. Aun cuando se pueden lograr reducciones en la varianza adicional que se produce con el método Hot-Deck, por ejemplo mediante una selección más eficiente del esquema de muestreo, poniendo restricciones en el número de veces que un caso actúa como donante, usando los valores observados en la variable para formar estratos de muestreo para donantes o mediante el uso de un *Hot-Deck Secuencial*; los *métodos de imputación múltiple* se deben preferir por sobre este método, puesto que los métodos de imputación múltiple no solo que pueden reducir el incremento de la varianza del muestreo a niveles insignificantes, sino que también proporcionan errores estándar válidos que tienen en cuenta la incertidumbre del proceso de imputación. Las estimaciones que se derivan del uso del método Hot-Deck son insesgadas solo bajo el supuesto que el mecanismo es del tipo MCAR; supuesto que, generalmente, es poco realista [@LittleRubin2020, pg.78].
+
+El método de imputación *Cold-Deck* imputa los valores faltantes de una variable por un valor constante que proviene de una fuente externa; por ejemplo, a partir de los datos de una encuesta anterior. La aplicación práctica de este método suele tratar los datos resultantes como una muestra completa, ignorando las consecuencias de la imputación. Una teoría satisfactoria para el análisis de datos obtenidos mediante el método de imputación Cold-Deck es inexistente [@LittleRubin2020, pg.69; @Buuren2012Flexible, pg.7].
+
+A manera de síntesis, se puede señalar que una limitación importante de los *métodos tradicionales* de imputación descritos en esta introducción es que los estimadores de la varianza de muestreo que son aplicados a los datos *completados* mediante estos métodos de imputación, al no tener en cuenta la incertidumbre asociada al proceso de imputación, a excepción del método de imputación por regresión estocástica, finalmente subestiman sistemáticamente la verdadera varianza de muestreo de las estimaciones. Por tanto, los errores estándar calculados a partir de los datos *completados* también se subestiman sistemáticamente, lo que implica que los *p-values* de las pruebas sean demasiado significativos y los intervalos de confianza sean demasiado estrechos [@LittleRubin2020, pg.81]. Lo anterior ocurre incluso si el modelo utilizado para generar las imputaciones es el correcto, algo que, salvo para el caso antes mencionado, depende de asumir que el mecanismo que genera la falta de datos es del tipo MCAR, supuesto que, como ya se ha mencionado, generalmente es poco realista [@LittleRubin2020, pg.78].
+
+Dado que los métodos tradicionales presentan limitaciones importantes que resultan insalvables y dado que estos métodos dependen de supuestos inverosímiles, lo que a continuación sigue en este documento es la presentación del marco teórico y los robustos fundamentos inferenciales en los que se basan los métodos de imputación basados en modelos; los cuales no presentan las limitaciones de los métodos tradicionales, ni dependen de supuestos inverosímiles.
+\newpage
+
+# Mecanismo de Datos Faltantes \label{sec:2}
+
+Como se ha mencionado, hasta antes del trabajo de Rubin [@Rubin1976], los análisis estadísticos con datos faltantes eran realizados a partir de suponer, implícita o explícitamente, que el *mecanismo* que genera los datos faltantes podía ser *ignorado*, pero sin dar respuesta a la importante pregunta sobre: *¿cuándo es apropiado ignorar el mecanismo que genera los datos faltantes?* [@Rubin1976, pg.581]. Rubin, sin embargo, logró establecer las *condiciones necesarias* (*weakest conditions*) sobre el mecanismo que genera los datos faltantes, tal que *siempre* es apropiado *ignorar* dicho mecanismo, al momento de realizar inferencia sobre la distribución de los datos [@Rubin1976, pg.582]. Esto, dentro la literatura de datos faltantes, se denomina *ignorabilidad del mecanismo*.
+
+En esta sección, se introducen los conceptos de *mecanismo de datos faltantes*, *tipos de mecanismo* y, a partir de estos, se señalan las condiciones necesarias que dan paso al importante concepto de *ignorabilidad del mecanismo*.
+
+## Patrón y Mecanismo de Datos Faltantes \label{sec:2.1}
+
+Dentro de la literatura de datos faltantes, los conceptos de *patrón* y *mecanismo de datos faltantes* suelen prestarse a confusión. El *patrón de datos faltantes* se refiere a la configuración o disposición de los datos *observados* y los *no observados* (*missing*), dentro de un conjunto de datos. En tanto, el *mecanismo de datos faltantes* describe las posibles relaciones entre los datos y la *propensión* que estos tienen de ser o no observados. De un modo más simple; mientras que el patrón de datos faltantes describe *dónde* están los "*missing*" (las celdas vacías) en los datos, el mecanismo de datos faltantes describe *cómo* se generan los "*missing*" en los datos [@Enders2022, pg.2]. Respecto al *patrón de datos faltantes*, dentro de la literatura existe concenso en cuanto a reconocer seis tipos de patrones, los que se distinguen según la configuración que emerge de la localización de los datos faltantes dentro del conjunto de datos^[Para un mayor detalle sobre los diferentes tipos de patrones de datos faltantes, se puede consultar [@LittleRubin2020, sec.1.2] y [@Enders2022, sec.1.2].]. En relación al *mecanismo de datos faltantes*, dentro de la literatura se reconocen tres tipos de mecanismo, que dependen según si la falta de datos está relacionada con los valores subyacentes de las variables del conjunto de datos^[En las Secciones (\ref{sec:2.2.1}), (\ref{sec:2.2.2}) y (\ref{sec:2.2.3}) de este documento, se describen estos tres tipos de mecanismo de datos faltantes. Para un mayor detalle sobre estos tipos de mecanismo de datos faltantes, se puede consultar [@LittleRubin2020, sec.1.3], [@Enders2022, sec.1.3], [@Buuren2012Flexible, sec.1.3] y [@Schafer1997Incomplete, sec.2.2].].
+
+Distinguir de manera clara entre lo que conceptualmente representra, por un lado, el *patrón* y, por otro, el *mecanismo* de datos faltantes, así como reconocer que *tipos de patrones* de datos faltantes están presenten dentro del conjunto de datos; son consideraciones importantes que se deben tener presente para alcanzar una adecuada comprensión del contenido de esta y la siguiente sección; no obstante, comprender las implicancias que tienen los diferentes tipos de mecanismo, resulta simplemente crucial. Diferenciar entre entre lo que representan el patrón y el mecanismo de datos faltantes, puede no ser del todo simple, más cuando ambos suelen representarse a través de un mismo objeto matemático y es solo el contexto de su uso lo que permite diferenciarlos; por tanto, siempre que sea necesario se debe regresar al inicio de esta sección. En tanto, reconocer el tipo de patrón de datos faltantes, permite concentrarse en algunos pocos métodos que están diseñados para un particular tipo de patrón; por tanto, se suguiere revisar [@LittleRubin2020, sec.1.2] si se considera prudente ahondar en un caso particular. En relación a los tipos de mecanismo y las distintas implicancias que cada uno de estos tiene, como veremos más adelante; la validez de los métodos de imputación basados en modelos depende, en gran medida, de la naturaleza de las *dependencias* al interior del *mecanismo* [@LittleRubin2020, pg.13]; por tanto, el énfasis de esta sección esta puesto en este último punto.
+
+Supongamos un conjunto de datos que está conformado por *valores* que corresponden a la información registrada de $n$ elementos, respecto a $p$ variables de interés. Conviene recordar que, en términos prácticos, los conjunto de datos que son de nuestro interés, corresponden a bases de datos rectangulares; es decir, conjuntos de datos dispuestos por filas y columnas; por tanto, lo natural es representar un conjunto de datos mediante un arreglo rectangular por filas y columnas; es decir, mediante una matriz de datos. Con el propósito de formalizar los conceptos mencionados al inicio de esta sección y, en particular, las implicancias que tienen los diferentes tipos de mecanismo, consideremos la siguiente notación^[En este documento, salvo que de manera explícita se señale lo contrario, se sigue la convención de denotar las variables aleatorias con letras mayúsculas y los valores observados, que son la realización de variables aleatorias, con las correspondientes letras minúsculas; por ejemplo, ${Z}_{1}, \dots ,{Z}_{n}$ denotan una secuencia de variables aleatorias, mientras que la realización de las variables aleatorias de la secuencia, se denotan por ${z}_{1}, \dots ,{z}_{n}$, respectivamente. En tanto, se utilizan letras griegas para denotar parámetros y cuando a estos se superpone el símbolo $\; \widehat{} \;$, estos denotan un estimador y una estimación del parámetro; por ejemplo, si algún parámetro es denotado por $\gamma$, entonces $\widehat{\gamma}$ denota un estimador y una estimación de $\gamma$. Por otro lado, los vectores y matrices, ya sean aleatorios o no, se denotan con letras minúsculas y mayúsculas en negrita, respectivamente; por ejemplo, los vectores:
+\begin{eqnarray} 
+\begin{bmatrix}
+{z}_{1} \\
+\vdots \\
+{z}_{n}
+\end{bmatrix} & \text{y} & 
+\begin{bmatrix}
+{Z}_{1} \\
+\vdots \\
+{Z}_{n}
+\end{bmatrix} \nonumber
+\end{eqnarray}
+representan, un vector de observaciones y de variables aleatorias, respectivamente; los que, por convención, se denotan por $\mathbf{z}$; de igual modo, $\boldsymbol{\gamma}$ denota un vector de parámetros; mientras que $\mathbf{X}$, por convención, denota una matriz de observaciones o de variables aleatorias. Finalmente, el superíndice $\; \intercal \;$ se utiliza para denotar la transposición de vectores y matrices; por ejemplo, un vector columna (como los antes descritos) se escriben como vectores fila al denotar $\mathbf{z} = {[ {z}_{1}, \dots ,{z}_{n} ]}^{\intercal}$ y $\mathbf{z} = {[ {Z}_{1}, \dots ,{Z}_{n} ]}^{\intercal}$, respectivamente. La notación adoptada en esta sección, se encuentra en [@Buuren2012Flexible, pg.30], [@Schafer1997Incomplete, sec.2.1-2.2] y [@He2022multiple, pg.7] y, con algunas diferencias, en [@Enders2022, pg.4-5] y [@LittleRubin2020, pg.8-9.].]:
+
+Sea $\mathbf{Y}$ una matriz de dimensión $n \times p$, cuyos elementos se pueden denotar por ${y}_{ij}$, con $i = 1, \dots ,n$, y $j = 1, \dots ,p$. Luego, el elemento en la posición $(i,j)$ de la matriz $\mathbf{Y}$; esto es, el elemento ${y}_{ij}$, corresponde al *valor* registrado en el elemento $i$ y la variable $j$. De este modo, el conjunto de datos queda representado por la matriz $\mathbf{Y}$^[En la Sección (\ref{sec:3}) de este documento, se aborda con mayor detalle esta misma descripción.]. Si suponemos que se cuenta con un conjunto de datos *completo* o, dicho de modo más simple, un conjunto de datos sin datos faltantes; en la matriz $\mathbf{Y}$, el valor correspondiente para ${y}_{ij}$ es *observado* en *todos* los elementos del conjunto de datos, $\mathbf{Y}$. Si por el contrario, *no* se cuenta con un conjunto de datos completo; es decir, el conjunto de datos tiene datos faltantes; en la matriz $\mathbf{Y}$, el valor correspondiente para ${y}_{ij}$ es *observado* en *algunos* elementos del conjunto de datos, $\mathbf{Y}$^[En tal sentido, dentro de la literatura se suele decir que se tiene un conjunto de datos *incompleto* (*incomplete data*).].
+
+Se ha señalado que el *patrón* de datos faltantes se refiere a la disposición (localización) de los datos *observados* y *no observados* dentro del conjunto de datos. En tal sentido, para describir la localización de los datos *observados* dentro del conjunto de datos, $\mathbf{Y}$; se define la *matriz indicadora de respuesta*, que suele denotarse por $\mathbf{R}$. Sea $\mathbf{R}$ una matriz *indicadora* de dimensión $n \times p$, cuyos elementos se pueden denotar por ${r}_{ij}$, con $i = 1, \dots, n$, y $j = 1, \dots, p$; donde:
+\begin{equation} \label{eq:1} 
+  {r}_{ij} = \begin{cases}
+     0 & \quad , \quad \; {y}_{ij} \; \text{es no observado} \\
+     1 & \quad , \quad \; {y}_{ij} \; \text{es observado}
+  \end{cases} 
+\end{equation}
+$\forall\; (i, j)$. De este modo, la matriz indicadora de respuesta $\mathbf{R}$, describe la localización de los datos *observados* (y la de los datos *no observados*) dentro del conjunto de datos, $\mathbf{Y}$.
+
+Por otro lado, también se ha señalado que el *mecanismo* de datos faltantes describe las posibles relaciones entre los datos y la *propensión* que estos tienen de ser o no observados. En tal sentido, siguiendo el trabajo de Rubin; si consideramos $\mathbf{R}$ como una variable aleatoria, entonces se le puede asignar una distribución de probabilidades [@LittleRubin2020, pg.13]. Sea $P\left( \cdot \right)$, el proceso aleatorio que gobierna la probabilidad de *observar el valor de los datos* y, en tal caso, $P\left( \cdot \right)$ se denomina *mecanismo de respuesta* [@Buuren2012Flexible, pg.6]. No obstante, dada la dualidad de la variable aleatoria, $P\left( \cdot \right)$ también permite representar el proceso aleatorio que gobierna la probabilidad de *no observar el valor de los datos*; por tanto, $P\left( \cdot \right)$ puede también denominarse *mecanismo de falta de respuesta* o, lo que es lo mismo, *mecanismo de datos faltantes*^[Como se menciona en [@LittleRubin2020, pg.9], alternativamente, se puede definir la *matriz indicadora de falta de respuesta*, denotada por $\mathbf{M}$, la cual describe la localización de los datos *no observados* dentro del conjunto de datos $\mathbf{Y}$. Sea $\mathbf{M}$ una matriz *indicadora* de dimensión $n \times p$, cuyos elementos se pueden denotar por ${m}_{ij}$, con $i = 1, \dots ,n$, y $j = 1, \dots ,p$; donde:
+\begin{equation}
+  {m}_{ij} = \begin{cases}
+     0 & \quad , \quad \; {y}_{ij} \; \text{es observado} \nonumber \\
+     1 & \quad , \quad \; {y}_{ij} \; \text{es no observado} \nonumber
+  \end{cases} 
+\end{equation}
+$\forall\; (i, j)$. En este caso, al proceso aleatorio se suele denominar *mecanismo de falta de respuesta* o, lo que es lo mismo, *mecanismo de datos faltantes*. El uso de $\mathbf{M}$ se encuentra, entre otros textos, en [@LittleRubin2020, pg.9] y [@Enders2022, pg.5]; en tanto, el uso de $\mathbf{R}$, y que sigue este documento, se encuentra en [@Buuren2012Flexible, pg.30], [@Schafer1997Incomplete, sec.2.2] y [@He2022multiple, pg.7], entre otros.]. De este modo, de un modo general, el *mecanismo* puede ser formulado como un modelo estadístico para $\mathbf{R}$, dado el conjunto de datos, $\mathbf{Y}$^[Otro concepto que suele mencionarse dentro la literatura es el de *modelo de respuesta* o *modelo de falta de datos* y se refiere al modelo particular del *mecanismo* [@Buuren2012Flexible, pg.6].]. Por tanto, sin pérdida de generalidad, el *mecanismo de falta de respuesta* puede ser caracterizado mediante:
+\begin{eqnarray} \label{eq:2}
+P\left(\mathbf{R} \;|\; \mathbf{Y}, \boldsymbol{\psi} \right)
+\end{eqnarray}
+donde, $P\left( \cdot \right)$ denota la distribución condicional de $\mathbf{R}$ dado $\mathbf{Y}$, y $\boldsymbol{\psi}$ denota un vector de parámetros desconocidos del modelo formulado para $\mathbf{R}$ [@LittleRubin2020, pg.13].
+
+Finalmente, si en el conjunto de datos $\mathbf{Y}$, denotamos los datos *observados* y los *no observados* por $\mathbf{Y}_{obs}$ e $\mathbf{Y}_{mis}$, respectivamente; los *datos completos* se pueden escribir como: $\mathbf{Y} = \left( \mathbf{Y}_{obs}, \mathbf{Y}_{mis} \right)$. De este modo, se tiene un modelo que establece la relación entre $\mathbf{R}$, que es completamente observado, e $\mathbf{Y}$, donde una parte es *observada*, $\mathbf{Y}_{obs}$; y otra es *no observada*, $\mathbf{Y}_{mis}$. De este modo, la distribución de probabilidades descrita en (\ref{eq:2}), se puede escribir como:
+\begin{eqnarray} \label{eq:3}
+P\left(\mathbf{R} \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right)
+\end{eqnarray}
+
+## Tipos de Mecanismo \label{sec:2.2}
+
+Tomando el trabajo de Rubin [@Rubin1976], Little y Rubin [@LittleRubin2020, sec.1.3] introdujeron un sistema de clasificación para el mecanismo de datos faltantes que es virtualmente universal en la literatura. Este trabajo describe tres tipos de *mecanismos* o *procesos aleatorios* que describen diferentes maneras en que la probabilidad de los datos faltantes se relaciona con los datos: *Falta de Datos Completamente Aleatoria* (*Missing Completly At Random*, MCAR), *Falta de Datos Aleatoria* (*Missing At Random*, MAR) y *Falta de Datos No Aleatoria* (*Missing Not At Random*, MNAR). Desde una perspectiva práctica, estos diferentes tipos de mecanismo son de vital importancia, puesto que funcionan como supuestos estadísticos en el análisis de datos faltantes [@Enders2022, pg.3-4]; lo que hace importante un análisis formal de cada uno de estos.
+
+### Falta de Datos Completamente Aleatoria (MCAR) \label{sec:2.2.1}
+
+Si la probabilidad de no observar el valor de un dato; es decir, ser un dato faltante ($\mathbf{R} = 0$), es la misma para todas las observaciones, se dice que la *falta de datos es completamente aleatoria*, esto es, el mecanismo es del tipo MCAR [@Buuren2012Flexible, pg.7]. Entonces, el mecanismo del tipo MCAR establece que la probabilidad de ser un dato faltante *no* está relacionada con los *datos* (i.e., ni con los datos observados, como tampoco con los no observados) [@Enders2022, pg.6]. Considerando la definición formal que involucra la distribución condicional de $\mathbf{R}$ dado $\mathbf{Y}$; la distribución para un mecanismo MCAR [@He2022multiple, pg.13], viene dada por^[Si se utiliza la *matriz indicadora de falta de respuesta* $\mathbf{M}$, equivalentemente, la distribución para un mecanismo MCAR [@Enders2022, pg.6], viene dada por:
+\begin{eqnarray}
+P\left(\mathbf{M} = 1 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right) & = & P\left(\mathbf{M} = 1 \;|\; \boldsymbol{\psi} \right) \nonumber
+\end{eqnarray}]:
+\begin{eqnarray} \label{eq:4}
+P\left(\mathbf{R} = 0 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right) & = & P\left(\mathbf{R} = 0 \;|\; \boldsymbol{\psi} \right)
+\end{eqnarray}
+Esto es, la probabilidad de los datos faltantes *no* está relacionada con los datos $\mathbf{Y}$ y solo depende de los parámetros $\boldsymbol{\psi}$. En palabras simples, el lado derecho de la ecuación (\ref{eq:4}) dice que todos los elementos tienen la misma probabilidad de ser un dato faltante, dados los parámetros $\boldsymbol{\psi}$ [@Enders2022, pg.6]. Una consecuencia muy importante de un proceso de este tipo es que se pueden ignorar muchas de las complejidades que surgen debido a la falta de datos, fuera de la pérdida obvia de información. No obstante, como ya se ha mencionado, aun cuando esta situación resulta sumamente conveniente, el mecanismo MCAR es una situación poco realista [@LittleRubin2020, pg.78; @Buuren2012Flexible, pg.7].
+
+### Falta de Datos Aleatoria (MAR) \label{sec:2.2.2}
+
+Si la probabilidad de no observar el valor de un dato; es decir, ser un dato faltante, es la misma solo dentro de grupos definidos por los datos *observados*, se dice que la *falta de datos es aleatoria*, esto es, el mecanismo es del tipo MAR [@Buuren2012Flexible, pg.7]. Entonces, el mecanismo del tipo MAR establece que la probabilidad de ser un dato faltante está relacionada con los *datos observados*, pero *no* con los *datos no observados* [@Enders2022, pg.8]. Considerando la definición formal que involucra la distribución condicional de $\mathbf{R}$ dado $\mathbf{Y}$; la distribución para un mecanismo MAR [@He2022multiple, pg.13], viene dada por^[Si se utiliza la *matriz indicadora de falta de respuesta* $\mathbf{M}$, equivalentemente, la distribución para un mecanismo MAR [@Enders2022, pg.8], viene dada por:
+\begin{eqnarray}
+P\left(\mathbf{M} = 1 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right) & = & P\left(\mathbf{M} = 1 \;|\; \mathbf{Y}_{obs}, \boldsymbol{\psi} \right) \nonumber
+\end{eqnarray}]:
+\begin{eqnarray} \label{eq:5}
+P\left(\mathbf{R} = 0 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right) & = & P\left(\mathbf{R} = 0 \;|\; \mathbf{Y}_{obs}, \boldsymbol{\psi} \right)
+\end{eqnarray}
+Esto es, la probabilidad de los datos faltantes está relacionada *solo* con la parte observada de los datos $\mathbf{Y}_{obs}$ y los parámetros $\boldsymbol{\psi}$. En palabras simples, el lado derecho de la ecuación (\ref{eq:5}) dice que los valores que se hubieran observado en $\mathbf{Y}_{mis}$ no contiene información adicional sobre los datos faltantes, distinta a la aportada por los datos observados $\mathbf{Y}_{obs}$ [@Enders2022, pg.8]. Este mecanismo es más general que el primero y resulta un supuesto más realista que suponer un mecanismo MCAR. Como veremos, los métodos modernos de imputación, generalmente, suponen que la falta de datos es generada por un mecanismo del tipo MAR.
+
+### Falta de Datos No Aleatoria (MNAR) \label{sec:2.2.3}
+
+Si la probabilidad de no observar el valor de un dato; es decir, ser un dato faltante, *no* es la misma para todas las observaciones, se dice que la *falta de datos es no aleatoria*, esto es, el mecanismo es del tipo MNAR. Enronces, el mecanismo del tipo MNAR establece que la probabilidad de ser un dato faltante está relacionada con los *datos observados* y, también, con los *datos no observados* [@Enders2022, pg.11]. Considerando la definición formal que involucra la distribución condicional de $\mathbf{R}$ dado $\mathbf{Y}$; la distribución para un mecanismo MNAR [@Buuren2012Flexible, pg.31], viene dada por^[Si se utiliza la *matriz indicadora de falta de respuesta*, $\mathbf{M}$, equivalentemente, la distribución para un mecanismo MNAR [@Enders2022, pg.11], viene dada por:
+\begin{eqnarray}
+P\left(\mathbf{M} = 1 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right) \nonumber
+\end{eqnarray}]:
+\begin{eqnarray} \label{eq:6}
+P\left(\mathbf{R} = 0 \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{mis}, \boldsymbol{\psi} \right)
+\end{eqnarray}
+A diferencia de los mecanismos MCAR y MAR; en el caso del mecanismo MNAR, la distribución condicional de $\mathbf{R}$ dado $\mathbf{Y}$ no se simplifica.
+
+## Ignorabilidad del Mecanismo \label{sec:2.3}
+
+Hasta ahora poco se ha dicho sobre el conjunto de parámetros del modelo formulado para $\mathbf{R}$, esto es, $\boldsymbol{\psi}$. La razón es bastante simple, tales parámetros no tienen algún valor en sí mismos y, generalmente, son además desconocidos. En tal sentido, el análisis de los datos faltantes se simplificaría si, dichos parámetros, simplemente se pudieran *ignorar*. En este sentido, la importancia práctica de haber realizado una distinción clara entre los diferentes tipos de mecanismo y, más importante aún, sobre lo que cada uno implica, como veremos más adelante dentro de este documento, clarifica las condiciones bajo las cuales es posible estimar los parámetros de nuestro modelo estadístico, sin la necesidad de conocer el conjunto de parámetros $\boldsymbol{\psi}$.
+
+La última parte del anterior párrafo, en buena medida, resume el propósito de la siguiente sección y, en cierto modo, destaca la relevancia práctica que se espera sea desarrollada dentro de este documento. Por mientras, es suficiente comentar que en el trabajo desarrollado por Rubin [@Rubin1976], se presentan dos modelos: el modelo que es el foco del análisis y un modelo que describe el mecanismo de datos faltantes. Sin pérdida de generalidad, supongamos que estos modelos tienen conjuntos de parámetros denotador por $\boldsymbol{\theta}$ y $\boldsymbol{\psi}$, respectivamente. Los parámetros en $\boldsymbol{\psi}$ son esencialmente una *molestia*, porque no están relacionados con los objetivos que motivaron la investigación de las unidades que conforman el conjunto de datos, $\mathbf{Y}$. Entonces, cabe preguntarse: *¿en qué situaciones podemos simplemente estimar $\boldsymbol{\theta}$ a partir de los datos observados, sin preocuparnos de estimar el modelo para los datos faltantes o los parámetros en $\boldsymbol{\psi}$?*. Esta es la esencia del concepto de *ignorabilidad del mecanismo*; es decir, regresamos a la importante pregunta planteada por Rubin: *¿cuándo es apropiado ignorar el mecanismo que genera los datos faltantes?* [@Rubin1976, pg.581].
+
+El trabajo de Rubin logró establecer las *condiciones necesarias* (*weakest conditions*) sobre el *mecanismo* que genera los datos faltantes, tal que *siempre* es apropiado *ignorar* el mecanismo al momento de realizar inferencia sobre la distribución de los datos [@Rubin1976, pg.582]. De este modo, se dice que el *mecanismo es ignorable*, si:
+
+  i. El mecanismo que genera los datos faltantes es del tipo MAR, y
+  
+  ii. Los parámetros $\boldsymbol{\psi}$ no contienen información sobre los parámetros de interés $\boldsymbol{\theta}$; es decir, $\boldsymbol{\psi}$ y $\boldsymbol{\theta}$ son parámetros *distintos*.
+  
+Como se verá en las secciones siguientes, el concepto de *ignorabilidad del mecanismo* tiene implicancias muy importantes en cuanto a la aplicación de los métodos de imputación basados en modelos. En este sentido, las condiciones que dan paso al concepto de *ignorabilidad del mecanismo*, son igual de importantes.
+\newpage
+
+# Métodos Basados en la Función de Verosimilitud \label{sec:3}
+
+Los métodos estadísticos modernos para el análisis e imputación de datos faltantes, bajo ciertos supuestos, se basan en la *función de verosimilitud*. En este sentido, el propósito fundamental de esta sección es presentar la teoría básica de la inferencia basada en la función de verosimilitud. Específicamente, se revisan el método de *Estimación por Máxima Verosimilitud* y su aplicación en la estimación e inferencia de los *Modelos Lineales Generalizados*. Presentado el marco teórico, se describe como estos pueden ser implementados, bajo el supuesto de *ignorabilidad del mecanismo*, cuando el conjunto de datos tiene datos faltantes. Finalmente, se presenta el *Algoritmo de Esperanza-Maximización*.
+
+Antes de comenzar con la presentación de la teoría básica de la inferencia basada en la función de verosimilitud, conviene presentar algunos conceptos que, además de ser mencionados de manera recurrente, resultan fundamentales para el adecuado entendimiento de los métodos de imputación modernos.
+
+## Definiciones Generales \label{sec:3.1}
+
+Sea $\mathbf{Y}$ una matriz de dimensión $n \times p$, donde cada fila puede ser modelada como la realización desde alguna distribución de probabilidad *multivariada*. De este modo, el conjunto de datos (representado por $\mathbf{Y}$) es la realización de una secuencia de $n$ vectores aleatorios, que pueden ser denotados por $\mathbf{y}_{1}^{\intercal}, \dots, \mathbf{y}_{n}^{\intercal}$. Por tanto, la matriz $\mathbf{Y}$ puede denotarse como $\mathbf{Y} = {[ \mathbf{y}_{1}^{\intercal}, \dots, \mathbf{y}_{n}^{\intercal} ]}^{\intercal}$; donde $\mathbf{y}_{i}^{\intercal}$, con $i = 1, \dots, n$; es un vector aleatorio de dimensión $1 \times p$; que puede denotarse por $\mathbf{y}_{i}^{\intercal} = [ {Y}_{i1}, \dots, {Y}_{ip} ]$; donde ${Y}_{ij}$, con $j = 1, \dots, p$; es una variable aleatoria. Luego, la secuencia de vectores aleatorios, según como se describa su soporte, pueden representar variables aleatorias discretas o continuas.
+
+Sin pérdida de generalidad, con el fin de simplificar la presentación teórica, supongamos que el conjunto de datos corresponde a la información registrada en $n$ elementos, para una variable de interés. En tal caso, el conjunto de datos puede representarse por medio de un vector columna de $n$ filas^[Recordemos que, por convensión, los vectores (aleatorios o no) se denotan mediante letras minúsculas en negrita.]. Sea $\mathbf{y}$ un vector de dimensión $n \times 1$, donde cada fila puede ser modelada como la realización desde alguna distribución de probabilidad *univariada*^[No obstante, las definiciones, conceptos y métodos que se presentan en esta sección, pueden extenderse al caso multivariado de manera simple y natural.]. De este modo, el conjunto de datos (representados por $\mathbf{y}$) es la realización de una secuencia de $n$ variables aleatorias, denotadas por ${Y}_{1}, \dots, {Y}_{n}$; por cuanto, el vector $\mathbf{y}$ puede denotarse como $\mathbf{y} = {[ {Y}_{1}, \dots, {Y}_{n} ]}^{\intercal}$. En tanto, en términos prácticos, el conjunto de datos corresponde a la *realización* de la secuencia de variables aleatorias ${Y}_{1}, \dots , {Y}_{n}$; las que pueden denotarse, respectivamente, por ${y}_{1}, \dots, {y}_{n}$. De este modo, la secuencia de realizaciones, por convención, es denotado por $\mathbf{y} = {[ {y}_{1}, \dots, {y}_{n} ]}^{\intercal}$.
+
+Notemos que $\mathbf{y}$ denota, al mismo tiempo, un vector de variables aleatorias y un vector de realizaciones; esto es, $\mathbf{y} = {[ {Y}_{1}, \dots, {Y}_{n} ]}^{\intercal}$ e $\mathbf{y} = {[ {y}_{1}, \dots, {y}_{n} ]}^{\intercal}$, respectivamente. Si bien esto no es un inconveniente, puesto que el contexto en que es utilizado el vector $\mathbf{y}$, permite diferenciar entre uno y otro^[Esto asumiendo que el contexto en que es utilizado $\mathbf{y}$ es el apropiado y, además, que la interpretación del uso dado en todo contexto, es también la apropiada.]. No obstante, dado que la notación que corresponde al caso univariado podría generar algún tipo de confunsión y, dado que las definiciones, conceptos y métodos que se presentan en esta sección, pueden extenderse al caso multivariado; se adopta la siguiente *excepción*: El conjunto de datos, que se asume puede ser modelado como la realización de una secuencia de variables aleatorias, denotadas por ${Y}_{1} , \dots , {Y}_{n}$; *excepcionalmente* será denotado por $\mathbf{Y} = {[ {Y}_{1}, \dots , {Y}_{n} ]}^{\intercal}$, donde $\mathbf{Y}$ es una *matriz* de dimensión $n \times 1$ (i.e. un vector columna de dimensión $n \times 1$). De este modo, $\mathbf{Y}$ denota una matriz (columna) de variables aleatorias, mientras que $\mathbf{y}$, siguiendo la convención, denota el vector de realizaciones de la secuencia de variables aleatorias, $\mathbf{Y}$; esto es, $\mathbf{y} = {[ {y}_{1}, \dots , {y}_{n} ]}^{\intercal}$. La excepción antes descrita, se mantiene para el resto de esta sección y las siguientes secciones.
+
+::: {.definition #def1 name="Función de probabilidad conjunta"}
+Sea ${Y}_{1} , \dots , {Y}_{n}$, una secuencia de variables aleatorias discretas; entonces, la función de probabilidad conjunta de ${Y}_{1} , \dots , {Y}_{n}$ es la función $f \left( {y}_{1} , \dots , {y}_{n} \right): { {\rm I\!R} }^{n} \longrightarrow [0,1]$, tal que:
+\begin{eqnarray} \label{eq:7}
+P \left( {Y}_{1}={y}_{1} , \dots , {Y}_{n}={y}_{n} \right) & = & f \left( {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & f \left( \mathbf{y} \right)
+\end{eqnarray}
+$\forall \mathbf{y}:\; \mathbf{y} = { [ {y}_{1} , \dots , {y}_{n} ] }^{\intercal} \in { {\rm I\!R} }^{n}$.
+:::
+
+De modo más general, si $A$ es un evento cualesquiera tal que $A \subset { {\rm I\!R} }^{n}$, entonces la *función de probabilidad conjunta* $f \left( \mathbf{y} \right)$, viene dada por:
+\begin{eqnarray} \label{eq:8}
+P \left( \mathbf{Y} \in A \right) & = & \sum_{\mathbf{y} \in A}^{}{ f \left( \mathbf{y} \right) }
+\end{eqnarray}
+
+::: {.definition #def2 name="Función de densidad conjunta"}
+Sea ${Y}_{1} , \dots , {Y}_{n}$, una secuencia de variables aleatorias continuas; entonces, la función de densidad conjunta de ${Y}_{1} , \dots , {Y}_{n}$ es la función $f \left( {y}_{1} , \dots , {y}_{n} \right): { {\rm I\!R} }^{n} \longrightarrow [0, \infty)$, tal que:
+\begin{eqnarray} \label{eq:9}
+\displaystyle P \left( {Y}_{1} \le {y}_{1}, \dots, {Y}_{n} \le {y}_{n} \right) & = & \int_{- \infty}^{ {y}_{1} } \; \cdots \int_{- \infty}^{ {y}_{n} } f \left( {u}_{1} , \dots , {u}_{n} \right) d{u}_{1} \cdots d{u}_{n} \nonumber \\
+ & = & f \left( {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & f \left( \mathbf{y} \right)
+\end{eqnarray}
+$\forall \mathbf{y}:\; \mathbf{y} = { [ {y}_{1} , \dots , {y}_{n} ] }^{\intercal} \in { {\rm I\!R} }^{n}$.
+:::
+
+De modo más general, si $A$ es un evento cualesquiera tal que $A \subset { {\rm I\!R} }^{n}$, entonces la *función de densidad conjunta* $f \left( \mathbf{y} \right)$, viene dada por:
+\begin{eqnarray} \label{eq:10}
+\displaystyle P \left( \mathbf{Y} \in A \right) & = & \int_{ }^{ } \; \cdots \int_{A}^{ } f \left( {y}_{1}, \dots, {y}_{n} \right) d{y}_{1} \cdots d{y}_{n} \nonumber \\
+ & & \nonumber \\
+ & = & \int_{ }^{ } \; \cdots \int_{A}^{ } f \left( \mathbf{y} \right) d\mathbf{y}
+\end{eqnarray}
+Entonces, dada una secuencia de variables aleatorias discretas o continuas ${Y}_{1}, \dots, {Y}_{n}$; que puede denotarse como un vector aleatorio por $\mathbf{Y} = {[ {Y}_{1}, \dots, {Y}_{n} ]}^{\intercal}$; la *función de probabilidad conjunta* (\ref{def:def1}) y la *función de densidad conjunta* (\ref{def:def2}), respectivamente, se representan indistintamente por $f \left( {y}_{1} , \dots , {y}_{n} \right)$ o, de manera compacta, $f \left( \mathbf{y} \right)$.
+
+Obsérvese que en la definición de función de probabilidad (densidad) conjunta no se está suponiendo particularmente algo sobre la secuencia de variables aleatorias ${Y}_{1}, \dots, {Y}_{n}$; sin embargo, si se asume que las variables aleatorias provienen de alguna distribución de probabilidad (que puede no ser la misma) y estas distribuyen *independientemente*, cada una con función de probabilidad (densidad) ${f}_{{Y}_{i}} \left( {y}_{i} \right)$, la función de probabilidad (densidad) conjunta de ${Y}_{1} , \dots , {Y}_{n}$; viene dada por:
+\begin{eqnarray} \label{eq:11}
+f\left( \mathbf{y} \right) & = & f\left( {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & {f}_{{Y}_{1}} \left( {y}_{1} \right) \cdot \; \cdots \; \cdot {f}_{{Y}_{n}} \left({y}_{n} \right) \nonumber \\
+ & = & \displaystyle \prod_{i = 1}^{n} {f}_{{Y}_{i}} \left( {y}_{i} \right)
+\end{eqnarray}
+Si, además, se asume que la secuencia de variables aleatorias ${Y}_{1}, \dots, {Y}_{n}$, distribuyen *idénticamente*, todas con función de probabilidad (densidad) $f \left( {y}_{i} \right)$, la función de probabilidad (densidad) conjunta de ${Y}_{1}, \dots, {Y}_{n}$; viene dada por:
+\begin{eqnarray} \label{eq:12}
+f\left( \mathbf{y} \right) & = & f\left( {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & f \left( {y}_{1} \right) \cdot \; \cdots \; \cdot f \left({y}_{n} \right) \nonumber \\
+ & = & \displaystyle \prod_{i = 1}^{n} f \left( {y}_{i} \right)
+\end{eqnarray}
+Respecto a la distribución de probabilidad, serán de nuestro interés particular las distribuciones de probabilidad parametrizadas, puesto que los modelos estadísticos, por lo general, se describen a partir de este tipo de distribuciones de probabilidad. Estas distribuciones de probabilidad, como cualquier otra, quedan completamente especificadas, ya sea por su función de distribución o por su función de probabilidad (densidad); no obstante, a estas las caracteriza un número finito de parámetros. De este modo, si se asume que la secuencia de variables aleatorias ${Y}_{1}, \dots, {Y}_{n}$; proviene de alguna distribución de probabilidad parametrizada, cuya función de probabilidad (densidad) es denotada por ${f}_{{Y}_{i}} \left( {y}_{i} \right)$ o $f\left( {y}_{i} \right)$; es caracterizada por un conjunto finito de parámetros denotados por $\boldsymbol{\theta} \in \Theta$, donde $\Theta \subset { {\rm I\!R} }^{k}$ denota el espacio paramétrico de $\boldsymbol{\theta}$ y $\boldsymbol{\theta} = {[ {\theta}_{1}, \dots, {\theta}_{k} ]}^{\intercal}$, denota un vector de dimensión $k \times 1$. Entonces, para enfatizar la dependencia de la función de probabilidad (densidad) sobre el conjunto de parámetros $\boldsymbol{\theta} \in \Theta$, denotaremos esto por, ${f}_{{Y}_{i}} \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)$ o $f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)$; y, en consecuencia, la función de probabilidad (densidad) conjunta de ${Y}_{1}, \dots, {Y}_{n}$, de manera general, se denota por:
+\begin{eqnarray} \label{eq:13}
+f\left( \mathbf{y} \;|\; \boldsymbol{\theta} \right) & = & f \left( {y}_{1}, \dots, {y}_{n} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+Sin pérdida de generalidad, en lo sucesivo, tanto $f \left( \mathbf{y} \;|\; \boldsymbol{\theta} \right)$, como $f \left( {y}_{1} , \dots , {y}_{n} \;|\; \boldsymbol{\theta} \right)$, representarán a alguna función de *densidad* conjunta de ${Y}_{1} , \dots , {Y}_{n}$.
+
+::: {.definition #def3 name="Función de verosimilitud"}
+Sea ${Y}_{1}, \dots, {Y}_{n}$, una secuencia de variables aleatorias continuas, cuya función de densidad conjunta depende de un conjunto de parámetros desconocidos $\boldsymbol{\theta} \in \Theta$; es decir, $f\left( {y}_{1} , \dots , {y}_{n} \;|\; \boldsymbol{\theta} \right)$. Entonces, la función de verosimilitud evaluada en los datos observados $\; {y}_{1}, \dots, {y}_{n}$; denota por $L\left( \theta \;|\; {y}_{1} , \dots , {y}_{n} \right)$; se define como la función de densidad conjunta de ${Y}_{1} , \dots , {Y}_{n}$; es decir:
+\begin{eqnarray} \label{eq:14}
+L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) & = & f\left( {y}_{1} , \dots , {y}_{n} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right) & = & f\left( \mathbf{y} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+:::
+
+Se debe notar que la función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$ es función del conjunto de parámetros $\boldsymbol{\theta} \in \Theta$, dados los datos observados $\mathbf{y}$; mientras que, la función de densidad conjunta $f\left( \mathbf{y} \;|\; \boldsymbol{\theta} \right)$ es función de $\mathbf{y}$, dados valores fijos de $\boldsymbol{\theta}$. En este sentido, la función de verosimilitud mide cuan bien el modelo estadístico logra explicar los datos observados $\mathbf{y}$.
+
+Si se asume que la secuencia de variables aleatorias ${Y}_{1} , \dots , {Y}_{n}$; distribuyen *independientemente*, cada una con función de densidad ${f}_{{Y}_{i}} \left( {y}_{i} \;|\; \theta \right)$; la función de verosimilitud viene dada por:
+\begin{eqnarray} \label{eq:15}
+L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) & = & f\left( {y}_{1} , \dots , {y}_{n} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+ & = & {f}_{{Y}_{1}} \left( {y}_{1} \;|\; \boldsymbol{\theta} \right) \cdot \; \cdots \; \cdot {f}_{{Y}_{n}} \left({y}_{n} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right) & = & \displaystyle \prod_{i = 1}^{n} {f}_{{Y}_{i}} \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+En tanto, si se asume que la secuencia de variables aleatorias ${Y}_{1} , \dots , {Y}_{n}$; distribuyen *independiente* e *idénticamente*, todas con función de densidad $f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)$; la función de verosimilitud viene dada por:
+\begin{eqnarray} \label{eq:16}
+L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) & = & f\left( {y}_{1} , \dots , {y}_{n} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+ & = & f \left( {y}_{1} \;|\; \boldsymbol{\theta} \right) \cdot \; \cdots \; \cdot f \left({y}_{n} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right) & = & \displaystyle \prod_{i = 1}^{n} f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+
+::: {.definition #def4 name="Función de log-verosimilitud"}
+La función de log-verosimilitud, denota por $\ell \left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right)$; se define como el logaritmo natural de la función de verosimilitud; es decir:
+\begin{eqnarray} \label{eq:17}
+\ell \left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) & = & \log L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+\ell \left( \boldsymbol{\theta} \;|\; \mathbf{y} \right) & = & \log L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)
+\end{eqnarray}
+:::
+
+De este modo, si se asume que la secuencia de variables aleatorias $\mathbf{Y} = {[ {Y}_{1}, \dots, {Y}_{n} ]}^{\intercal}$ distribuyen *independiente* e *idénticamente* (*i.i.d.*), todas con función de densidad $f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)$; la función de log-verosimilitud viene dada por:
+\begin{eqnarray} \label{eq:18}
+\ell \left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) & = & \log L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & \log \displaystyle \prod_{i = 1}^{n} f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right) \nonumber \\
+\ell \left( \boldsymbol{\theta} \;|\; \mathbf{y} \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+
+## Estimación por Máxima Verosimilitud \label{sec:3.2}
+
+El método de *Estimación por Máxima Verosimilitud* (MLE), introducido por R. A. Fischer, es un método de estimación de parámetros de una distribución o, de manera más general, de un modelo estadístico. El método de MLE, *dados los datos observados* $\mathbf{y} = {[ {y}_{1} , \dots , {y}_{n} ]}^{\intercal}$, *estima* valores para los parámetros del modelo $\boldsymbol{\theta} \in \Theta$; tales que estos *maximizan* la función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$. De este modo, a través de maximizar la función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$, se busca el valor de $\boldsymbol{\theta} \in \Theta$ que hace más verosímil la muestra de datos observada $\mathbf{y}$.
+
+::: {.definition #def5 name="Estimador de máxima verosimilitud"}
+Sea $\widehat{\boldsymbol{\theta}} = \widehat{\boldsymbol{\theta}} \left( {Y}_{1}, \dots, {Y}_{n} \right)$ una estadística; es decir, una función de los datos observados $\mathbf{y}$, que permite estimar $\boldsymbol{\theta} \in \Theta$. Si el estimador $\widehat{\boldsymbol{\theta}}$, al ser evaluado en los datos observados, maximiza la función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$, entonces se denomina Estimador de Máxima Verosimilitud (MLE) de $\boldsymbol{\theta}$. En tanto, la estimación ${\widehat{\boldsymbol{\theta}}}_{MLE} = \widehat{\boldsymbol{\theta}} \left( {y}_{1}, \dots, {y}_{n} \right)$, se denomina estimación máximo verosimil de $\boldsymbol{\theta}$. De este modo, se tiene que:
+\begin{eqnarray} \label{eq:19}
+\displaystyle {\widehat{\boldsymbol{\theta}}}_{MLE} & = & \arg \max_{\boldsymbol{\theta} \in \Theta}\; L\left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & \arg \max_{\boldsymbol{\theta} \in \Theta}\; L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)
+\end{eqnarray}
+:::
+
+Normalmente es más fácil trabajar con la función de log-verosimilitud $\ell \left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$, la cual tiene el mismo máximo que la función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$, ya que la función logaritmo es una función continua y estrictamente monótona. Además, cualquier constante aditiva que involucre posiblemente los datos observados $\mathbf{y}$ pero no a $\boldsymbol{\theta}$, puede omitirse de la función de log-verosimilitud sin cambiar la ubicación de su máximo o las diferencias entre los valores de la función de log-verosimilitud en diferentes valores de $\boldsymbol{\theta}$. De este modo, equivalentemente, se tiene que:
+\begin{eqnarray} \label{eq:20}
+\displaystyle {\widehat{\boldsymbol{\theta}}}_{MLE} & = & \arg \max_{\boldsymbol{\theta} \in \Theta}\; \ell \left( \boldsymbol{\theta} \;|\; {y}_{1} , \dots , {y}_{n} \right) \nonumber \\
+ & = & \arg \max_{\boldsymbol{\theta} \in \Theta}\; \ell \left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)
+\end{eqnarray}
+La función de verosimilitud $L\left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$ y la función de log-verosimilitud $\ell \left( \boldsymbol{\theta} \;|\; \mathbf{y} \right)$, de manera más simple, se suelen denotar, respectivamente, por $L\left( \boldsymbol{\theta} \right)$ y $\ell \left( \boldsymbol{\theta} \right)$. De este modo, siguiendo la definición (\ref{def:def5}), el MLE del parámetro $\boldsymbol{\theta}$, denotado por ${\widehat{\boldsymbol{\theta}}}_{MLE}$, corresponde al valor de $\boldsymbol{\theta} \in \Theta$ que, dados los datos observados, hace máximo el valor de la función de verosimilitud $L\left( \boldsymbol{\theta} \right)$. Entonces, ${\widehat{\boldsymbol{\theta}}}_{MLE}$ resulta de resolver un problema de optimización donde la función objetivo a maximizar es $L\left( \boldsymbol{\theta} \right)$ o, equivalentemente, $\ell \left( \boldsymbol{\theta} \right)$; mientras que $\boldsymbol{\theta}$ es la variable de elección. Es decir, se busca resolver el siguiente problema:
+\begin{eqnarray} \label{eq:21}
+\max\; \ell \left( \boldsymbol{\theta} \right) & ; & \texttt{s.a.}\; \boldsymbol{\theta} \in \Theta
+\end{eqnarray}
+Un enfoque sistemático para maximizar la función de log-verosimilitud $\ell \left( \boldsymbol{\theta} \right)$ es mediante el uso del cálculo diferencial; puesto que el valor buscado del parámetro $\boldsymbol{\theta} \in \Theta$ corresponderá a la raíz de la derivada de $\ell \left( \boldsymbol{\theta} \right)$ con respecto de $\boldsymbol{\theta}$. No obstante, se debe verificar que la raiz hallada corresponda a un máximo para la función $\ell \left( \boldsymbol{\theta} \right)$.  
+
+### Estimación e Inferencia: $k = 1$ \label{sec:3.2.1}
+
+Sea $\boldsymbol{\theta} = {\left( {\boldsymbol{\theta}}_{1} , \dots , {\boldsymbol{\theta}}_{k} \right)}^{\intercal}$ el conjunto de parámetros desconocidos del modelo estadístico. Si $k = 1$, entonces $\left( \boldsymbol{\theta} = \theta \right)$; la condición necesaria que debe satisfacer el máximo de $\ell \left( \theta \right)$, es:
+\begin{eqnarray} \label{eq:22}
+\frac{d \ell \left( \theta \right) }{d \theta } & = & {\ell}^{\prime} \left( \theta \right) \;=\; 0
+\end{eqnarray}
+Luego, la raíz de la ecuación (\ref{eq:22}); es decir, el valor de $\theta \in \Theta$ que anula ${\ell}^{\prime} \left( \theta \right)$^[Dentro de la inferencia clásica, ${\ell}^{\prime} \left( \theta \right)$ suele denotarse por $U \left( \theta \right)$ y esta expresión se denomina *función score*. En tanto, la ecuación (\ref{eq:22}), cuando es escrita como $U \left( \theta \right) = 0$, se denomina *ecuación score*.], es candidato a máximo de $\ell \left( \theta \right)$. En general, la raíz de una función no es necesariamente el máximo global; podría ser simplemente un máximo local o incluso un mínimo local. En tal caso, para verificar que $\ell \left( \theta \right)$ alcanza un máximo en algún punto que verifica la ecuación (\ref{eq:22}), digamos $\theta = \widehat{\theta}$; debe verificarse que la segunda derivada de $\ell \left( \theta \right)$ respecto de $\theta$ es negativa en $\theta = \widehat{\theta}$. Es decir, se debe veriricar que:
+\begin{eqnarray} \label{eq:23}
+\frac{{d}^{2} \ell \left( \theta \right) }{d {\theta}^{2} } \bigg|_{\theta = \widehat{\theta} } & = & \frac{d {\ell}^{\prime} \left( \theta \right) }{d \theta } \bigg|_{\theta = \widehat{\theta} } \;=\; {\ell}^{\prime \prime} \left( \theta = \widehat{\theta} \right) \;<\; 0
+\end{eqnarray}
+Entonces, si el punto $\theta = \widehat{\theta}$ verifica las ecuaciones (\ref{eq:22}) y (\ref{eq:23}), la función de log-verosimilitud $\ell \left( \theta \right)$ alcanza un máximo en tal punto. Luego, $\theta = \widehat{\theta}$ es el MLE de $\theta$, el cual se suele denotar por ${\widehat{\theta}}_{MLE}$.
+
+El MLE tiene una distribución muestral puesto que depende de la realización de las variables aleatorias ${Y}_{1} , \dots , {Y}_{n}$. Este estimador puede ser sesgado o insesgado para $\theta$, pero en condiciones bastante generales es asintóticamente insesgado cuando $n \longrightarrow \infty$. En tanto, la varianza muestral del MLE depende de la curvatura promedio de la función de log-verosimilitud $\ell \left( \theta \right)$: cuando $\ell \left( \theta \right)$ es muy empinada, la ubicación del máximo se conoce con mayor precisión. De este modo, la segunda derivada de la función de log-verosimilitud; esto es ${\ell}^{\prime \prime} \left( \theta \right)$, permite medir qué tan bien determinado esta el MLE. Denotemos por $\mathcal{J}\left( \theta \right)$ a $- {\ell}^{\prime \prime} \left( \theta \right)$; es decir:
+\begin{eqnarray} \label{eq:24}
+\mathcal{J}\left( \theta \right) & = & - \frac{{d}^{2} \ell \left( \theta \right) }{d {\theta}^{2} } \;=\; - \frac{d {\ell}^{\prime} \left( \theta \right) }{d \theta } \;=\; - {\ell}^{\prime \prime} \left( \theta \right)
+\end{eqnarray}
+Luego, considerando (\ref{eq:24}), $\mathcal{J}\left( \theta \right)$ debe ser positivo cerca del MLE, ${\widehat{\theta}}_{MLE}$. Si $\mathcal{J}\left( \theta \right)$ es grande, la pendiente de $\ell \left( \theta \right)$, descrita por ${\ell}^{\prime} \left( \theta \right)$, está cambiando rápidamente cerca del estimador, lo que significa que la cima de la función de log-verosimilitud es muy pronunciada alrededor de ${\widehat{\theta}}_{MLE}$ y, por tanto, la estimación del parámetro, ${\widehat{\theta}}_{MLE}$, está bien definida. En esta situación, un pequeño cambio en la estimación de $\theta$, cambiará sustancialmente el valor de la función de log-verosimilitud; por tanto, ${\widehat{\theta}}_{MLE}$ es una estimación muy precisa de $\theta$. Por otro lado, si $\mathcal{J}\left( \theta \right)$ es cercano a cero, la pendiente de $\ell \left( \theta \right)$ está cambiando lentamente cerca del estimador, lo que significa que la cima de la función de log-verosimilitud es relativamente plana alrededor de ${\widehat{\theta}}_{MLE}$ y, por tanto, la estimación del parámetro, ${\widehat{\theta}}_{MLE}$, no está tan bien determinada. En esta situación, ${\widehat{\theta}}_{MLE}$ es un estimador menos preciso de $\theta$. Por tanto, $\mathcal{J}\left( \theta \right)$ es una medida de la precisión de ${\widehat{\theta}}_{MLE}$; es decir, $\mathcal{J}\left( \theta \right)$ mide cuánta información está disponible para estimar $\theta$.
+
+La expresión $\mathcal{J}\left( \theta \right) = - {\ell}^{\prime \prime} \left( \theta \right)$, se denomina *información observada*. En tanto, $\mathcal{I}\left( \theta \right) = \mathbb{E} \{ \mathcal{J}\left( \theta \right) \}$, se define como la *información esperada*, también denominada *información de Fisher*. Mientras que $\mathcal{J}\left( \theta \right)$ es una función de los datos observados, $\mathcal{I}\left( \theta \right)$ es una propiedad del modelo. Esta mide la información promedio que se observará para el parámetro del modelo y el valor especificado para este.
+
+Se puede demostrar que $\mathcal{I}\left( \theta \right) = \mathbb{E} \{ { {\ell}^{\prime} \left( \theta \right) }^{2} \} = Var\left( {\ell}^{\prime} \left( \theta \right) \right)$. Lo anterior indica exactamente cómo la información esperada mide la tasa de cambio en la derivada de la función de log-verosimilitud alrededor del valor verdadero del parámetro. Una expansión lineal de la serie de Taylor de la función de log-verosimilitud alrededor de $\theta = {\widehat{\theta}}_{MLE}$, muestra además que:
+\begin{eqnarray} \label{eq:25}
+Var\left( {\widehat{\theta}}_{MLE} \right) & \approx & \frac{1}{ \mathcal{I}\left( \theta \right) }
+\end{eqnarray}
+Por tanto, la información esperada es una medida de la precisión del MLE; específicamente, la varianza del MLE es inversamente proporcional a la *información de Fisher* $\mathcal{I}\left( \theta \right)$ para el parámetro. Luego, la varianza estimada para ${\widehat{\theta}}_{MLE}$, viene dada por:
+\begin{eqnarray} \label{eq:26}
+\widehat{Var} \left( {\widehat{\theta}}_{MLE} \right) & = & \frac{1}{ \mathcal{I}\left( {\widehat{\theta}}_{MLE} \right) }
+\end{eqnarray}
+Finalmente, la desviación estándar (error estándar) estimada de ${\widehat{\theta}}_{MLE}$, viene dada por:
+\begin{eqnarray} \label{eq:27}
+\widehat{se}\left( {\widehat{\theta}}_{MLE} \right) & = & \frac{1}{ \sqrt{ \mathcal{I}\left( {\widehat{\theta}}_{MLE} \right) } }
+\end{eqnarray}
+
+#### Distribución Weibull \label{sec:3.2.1.1}
+\
+
+Sea ${Y}_{1} , \dots , {Y}_{n}$; una secuencia de variables aleatorias (v.a.) *i.i.d.* de una distribución Weilbull con función de densidad:
+\begin{eqnarray} \label{eq:28}
+f\left( y \;|\; a , \sigma \right) & = & \left( \frac{a}{\sigma} \right) {\left( \frac{y}{\sigma} \right)}^{a - 1} \exp \left( - {\left( \frac{y}{\sigma} \right)}^{a} \right)
+\end{eqnarray}
+para $y > 0$; donde $a > 0$ es el parámetro de forma y $\sigma > 0$ es el parámetro de escala.
+
+Se puede mostrar que la función de log-verosimilitud $\ell \left( a , \sigma \right)$ de (\ref{eq:28}), viene dada por:
+\begin{eqnarray} \label{eq:29}
+\ell \left( a , \sigma \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; a , \sigma \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log \left\{ \left( \frac{a}{\sigma} \right) {\left( \frac{{y}_{i}}{\sigma} \right)}^{a - 1} \exp \left( - {\left( \frac{{y}_{i}}{\sigma} \right)}^{a} \right) \right\} \nonumber \\
+ & = & \displaystyle n \log a - n a \log \sigma + \left(a - 1\right) \sum_{i = 1}^{n} \log {y}_{i} - \sum_{i = 1}^{n} {\left( \frac{{y}_{i}}{\sigma} \right)}^{a}
+\end{eqnarray}
+Si se asume que se conoce el valor del parámetro de forma $a$; de las ecuaciones (\ref{eq:22} y \ref{eq:29}), se tiene que el MLE de $\sigma$ viene de resolver, para $\sigma$, la ecuación:
+\begin{eqnarray} \label{eq:30}
+\frac{d \ell \left( \sigma \right) }{d \sigma } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la solución de la ecuación (\ref{eq:30}), corresponde a:
+\begin{eqnarray} \label{eq:31}
+{\widehat{\sigma}}_{MLE} & = & {\left( \frac{1}{n} \sum_{i = 1}^{n} {{y}_{i}}^{a} \right)}^{{1}/{a}}
+\end{eqnarray}
+
+Puede remitirse al [Anexo 1.1. Distribución Weibull][], donde se presenta una aplicación para este caso.
+
+### Estimación e Inferencia: $k > 1$ \label{sec:3.2.2}
+
+Sea $\boldsymbol{\theta} = {\left( {\boldsymbol{\theta}}_{1}, \dots, {\boldsymbol{\theta}}_{k} \right)}^{\intercal}$ el conjunto de parámetros desconocidos del modelo estadístico. Si $k > 1$, la condición necesaria que debe satisfacer el máximo de $\ell \left( \boldsymbol{\theta} \right)$, es:
+\begin{eqnarray} \label{eq:32}
+\nabla \ell \left( \boldsymbol{\theta} \right) & = & {\left( \frac{\partial \ell \left( \boldsymbol{\theta} \right) }{\partial {\boldsymbol{\theta}}_{1} } \;,\; \dots \;,\; \frac{\partial \ell \left( \boldsymbol{\theta} \right) }{\partial {\boldsymbol{\theta}}_{k} } \right)}^{\intercal} \;=\; \mathbf{0}
+\end{eqnarray}
+donde, $\nabla \ell \left( \boldsymbol{\theta} \right)$^[El vector $\nabla \ell \left( \boldsymbol{\theta} \right)$ suele denotarse por $U \left( \boldsymbol{\theta} \right) = {\left( U \left( {\boldsymbol{\theta}}_{1} \right), \dots, U \left( {\boldsymbol{\theta}}_{k} \right)  \right)}^{\intercal}$ y, en tal caso, $U \left( \boldsymbol{\theta} \right)$ se denominan las *funciones score* y el sistema de ecuaciones (\ref{eq:29}), cuando es escrito como $U \left( \boldsymbol{\theta} \right) = \mathbf{0}$, se denomina como el *sistema de ecuaciones score*.] es el vector gradiente de $\ell \left( \boldsymbol{\theta} \right)$ y $\mathbf{0}$ es el vector de ceros, ambos vectores de dimensión $k \times 1$. Luego, la raíz del sistema de ecuaciones (\ref{eq:32}); es decir, el valor del vector $\boldsymbol{\theta} \in \Theta$ que anula $\nabla \ell \left( \boldsymbol{\theta} \right)$, es candidato a máximo de $\ell \left( \boldsymbol{\theta} \right)$ y, al igual que cuando $k = 1$, se debe verificar que $\ell \left( \boldsymbol{\theta} \right)$ alcanza un máximo en el punto que verifica el sistema de ecuaciones (\ref{eq:32}), digamos $\boldsymbol{\theta} = \widehat{\boldsymbol{\theta}}$; para esto debe verificarse que la matriz Hessiana de $\ell \left( \boldsymbol{\theta} \right)$, denotada por $\mathbf{H}\left( \ell \left( \boldsymbol{\theta} \right) \right)$, es (semi) definida negativa en $\boldsymbol{\theta} = \widehat{\boldsymbol{\theta}}$. La matriz Hessiana, también denotada por ${\mathbf{H}}_{\ell}$, es una matriz cuadrada de dimensión $k \times k$, definida como:
+\begin{eqnarray} \label{eq:33}
+\mathbf{H}\left( \ell \left( \boldsymbol{\theta} \right) \right) & = & 
+\begin{bmatrix}
+\displaystyle \frac{{\partial}^{2} \ell \left( \boldsymbol{\theta} \right) }{\partial {\boldsymbol{\theta}}_{i} \partial {\boldsymbol{\theta}}_{j} }
+\end{bmatrix}
+\end{eqnarray}
+$\forall i,j:\; i = 1, \dots, k \; ; \; j = 1, \dots, k$.
+
+A partir de las expresiones descritas cuando $k = 1$, se pueden deducir las expresiones correspondientes para la *matriz de información observada* $\mathcal{J}\left( \boldsymbol{\theta} \right)$, la *matriz de información esperada* o *matriz de información de Fisher* $\mathcal{I}\left( \boldsymbol{\theta} \right)$ y la *matriz de varianzas y covarianzas* $\widehat{Var} \left( {\widehat{\boldsymbol{\theta}}}_{MLE} \right)$. En esta última, la varianza estimada para cada parámetro estimado se encuentra en la diagonal de la inversa de la matriz de información de Fisher.
+
+#### Distribución Normal \label{sec:3.2.2.1}
+\
+
+Sea ${Y}_{1} , \dots , {Y}_{n}$; una secuencia de v.a. *i.i.d.* de una distribución normal con función de densidad:
+\begin{eqnarray} \label{eq:34}
+f\left( y \;|\; \mu , {\sigma}^{2} \right) & = & \frac{1}{\sqrt{2 \pi {\sigma}^{2}}} \exp \left( -\frac{{\left( y - \mu \right)}^{2}}{2 {\sigma}^{2}} \right)
+\end{eqnarray}
+para $- \infty < y < \infty$; donde $\mu$ y ${\sigma}^{2}$ son la media y la varianza, respectivamente, de la distribución.
+
+Se puede mostrar que la función de log-verosimilitud $\ell \left( \mu , {\sigma}^{2} \right)$ de (\ref{eq:34}), viene dada por:
+\begin{eqnarray} \label{eq:35}
+\ell \left( \mu , {\sigma}^{2} \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; \mu , {\sigma}^{2} \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log \left\{ \frac{1}{\sqrt{2 \pi {\sigma}^{2}}} \exp \left( -\frac{{\left( {y}_{i} - \mu \right)}^{2}}{2 {\sigma}^{2}} \right) \right\} \nonumber \\
+ & = & \displaystyle - \frac{n}{2} \log \left( 2 \pi {\sigma}^{2} \right) - \frac{1}{2 {\sigma}^{2}} \sum_{i = 1}^{n} {\left( {y}_{i} - \mu \right)}^{2}
+\end{eqnarray}
+Si se asume que no se conocen los valores de ambos parámetros, $\mu$ y ${\sigma}^{2}$; como se señala en (\ref{eq:32}), el MLE para $\mu$ y ${\sigma}^{2}$ vienen de resolver, para $\mu$ y ${\sigma}^{2}$, el sistema de ecuaciones:
+\begin{eqnarray} \label{eq:36}
+\nabla \ell \left( \mu , {\sigma}^{2} \right) & = & {\left( \frac{\partial \ell \left( \mu , {\sigma}^{2} \right) }{\partial \mu } \;,\; \frac{\partial \ell \left( \mu , {\sigma}^{2} \right) }{\partial {\sigma}^{2} } \right)}^{\intercal} \;=\; \mathbf{0}
+\end{eqnarray}
+No es difícil mostrar que la solución del sistema de ecuaciones (\ref{eq:36}), corresponde a:
+\begin{eqnarray}
+{\widehat{\mu}}_{MLE} & = & \bar{y} \\
+{\widehat{{\sigma}^{2}}}_{MLE} & = & \frac{1}{n} \sum_{i = 1}^{n} {\left( {y}_{i} - \bar{y} \right)}^{2}
+\end{eqnarray}
+donde $\displaystyle \bar{y} = \frac{1}{n} \sum_{i = 1}^{n} {y}_{i}$.
+
+Finalmente, para cerrar este apartado referido al método de Estimación por Máxima Verosimilitud, la siguiente proposición describe una de las propiedades más importantes del MLE: la propiedad de *invarianza*.
+
+::: {.proposition #prop1}
+Sea $g\left( \boldsymbol{\theta} \right)$ una función continua y estrictamente monótona que depende de $\boldsymbol{\theta}$. Si ${\widehat{\boldsymbol{\theta}}}_{MLE}$ es MLE de $\boldsymbol{\theta}$, entonces $g\left( {\widehat{\boldsymbol{\theta}}}_{MLE} \right)$ es MLE de $g\left( \boldsymbol{\theta} \right)$.
+:::
+
+## Modelos Lineales Generalizados \label{sec:3.3}
+
+Nuestra discusión sobre la función de verosimilitud hasta ahora solo ha considerado la distribución de probabilidades del conjunto de datos $\mathbf{Y}$. Sin embargo, la mayoría de las situaciones en las que se requiere algún tipo de modelización estadística son más complejas de lo que se puede describir mediante una distribución de probabilidades; situación ampliamente descrita en la sección precedente. Por el contrario, si estamos interesados en incorporar algún mecanismo que nos permita analizar $Y$ como función de un otro conjunto de variables explicativas (covariables y factores) de la primera, esto supone el uso de modelos estadísticos, específicamente, modelos de regresión que consideran un componente aleatorio y un componente sistemático. 
+
+De manera muy general, un modelo de regresión supone que $\mathbf{y} = {[ {Y}_{1} , \dots , {Y}_{n} ]}^{\intercal}$, es una secuencia de variables respuesta que se asumen *independientes* entre sí y que la variable respuesta de la observación $i$, la media condicional $\mathbb{E}\left( {Y}_{i} | \mathbf{x}^{\intercal}_{i} \right) = {\mu}_{i}$, depende de $p$ variables explicativas descritas por $\mathbf{x}^{\intercal}_{i} = [ {x}_{i1}, {x}_{i2}, \dots, {x}_{ip} ]$ y un conjunto de $p$ parámetros de regresión, denotados por $\boldsymbol{\beta} = {[ {\beta}_{1}, {\beta}_{2}, \dots, {\beta}_{p} ]}^{\intercal}$, a través de alguna función general, digamos $f$. Se asume, además, que el conjunto de variables explicativas $\mathbf{x}^{\intercal}_{i}$ y los parámetros $\boldsymbol{\beta}$, combinan linealmente los efectos de las primeras. De este modo, el componente sistemático a menudo se describe como^[En el conjunto de variables explicativas $\mathbf{x}^{\intercal}_{i}$, en esta presentación, se asume que el primer término es constante e igual a uno; es decir, ${x}_{i1} = 1 \;, \forall i:\; i = 1, \dots, n$.]:
+\begin{eqnarray} \label{eq:39}
+\mathbb{E}\left( {Y}_{i} | \mathbf{x}^{\intercal}_{i} \right) \;=\; {\mu}_{i} & = & f \left( {\beta}_{1} + {\beta}_{2}{x}_{i2} + \dots + {\beta}_{p}{x}_{ip} \right) \nonumber \\
+ & = & \displaystyle f \left( \sum_{j = 1}^{p} {\beta}_{j} {x}_{ij} \right) \nonumber \\
+ & = & \displaystyle f \left( \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta} \right)
+\end{eqnarray}
+para $i = 1, \dots, n$; donde, el componente $\mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}$ suele denominarse el *predictor lineal* de la regresión.
+
+La ecuación (\ref{eq:39}), para el conjunto de datos, se puede escribir en notación matricial, como:
+\begin{eqnarray} \label{eq:40}
+\mathbb{E}\left( \mathbf{Y} | \mathbf{X} \right) \;=\; \boldsymbol{\mu} & = & f \left( \mathbf{X} \boldsymbol{\beta} \right)
+\end{eqnarray}
+donde, $\mathbf{X} = {\left( \mathbf{x}^{\intercal}_{1}, \dots, \mathbf{x}^{\intercal}_{n} \right)}^{\intercal}$ es la *matriz de diseño*, matriz de dimensión $n \times p$, $\boldsymbol{\mu}$ es el vector de medias condicionales del vector $\mathbf{Y}$, ambos vectores de dimensión $n \times 1$, y $\boldsymbol{\beta}$ es el vector de parámetros desconocidos de dimensión $p \times 1$; siendo $p$ es el número de parámetros desconocidos del modelo, incluyendo el intercepto que, en esta presentación, viene dado por ${\beta}_{1}$. Luego, $\mathbf{Y}$ contiene la parte aleatoria, mientras que $\mathbf{X} \boldsymbol{\beta}$ es el *predictor lineal*.
+
+Los modelos de regresión como el descrito en (\ref{eq:39} y \ref{eq:40}), son modelos de regresión lineales en los parámetros $\boldsymbol{\beta}$. Dentro de este tipo de modelos de regresión, destacan los *Modelos Lineales* (LMs), que son el método estadístico más utilizado en el análisis de regresión, esto debido a que son simples de construir e interpretar. Sin embargo, los supuestos estadísticos en que se basan los LMs, limitan (de manera considerable) el análisis estadístico al momento de utilizar modelos estadísticos para analizar la variable respuesta $\mathbf{Y}$, como función de un otro conjunto de variables explicativas $\mathbf{X}$. Con el propósito de evitar que las limitaciones propias de los LMs acoten los alcances de nuestro estudio, se introduce una clase de modelos más amplia: los *Modelos Lineales Generalizados* (GLMs).
+
+Los GLMs fueron popularizados en el trabajo de [@Nelder1972], donde muestran que:
+
+  i. Los modelos de regresión lineales más comunes de la estadística clásica, incluidos los LMs, son en realidad miembros de una misma familia de modelos y que pueden tratarse de la misma manera.
+  
+  ii. El método de Estimación por Máxima Verosimilitud puede ser utilizado para todos estos modelos y los MLEs de los parámetros desconocidos de los GLMs se pueden obtener utilizando el mismo algoritmo: el algoritmo de *Mínimos Cuadrados Ponderados Iterados* (IWLS).
+
+Antes de realizar una presentación formal de los GLMs, conviene realizar una breve descripción de los LMs y, además, introducir una importante familia de distribuciones para los GLMs. 
+
+### Modelos Lineales \label{sec:3.3.1}
+
+El supuesto básico de los LMs es asumir una *relación lineal* entre la media condicional de la variable respuesta $\mathbf{Y}$ y el predictor lineal $\mathbf{X} \boldsymbol{\beta}$ y, además, los valores de la variable respuesta son continuos y siguen una distribución normal condicional en $\mathbf{X}$, con varianza constante.
+
+Sea $\mathbf{Y} = {[ {Y}_{1} , \dots , {Y}_{n} ]}^{\intercal}$ una secuencia de variables respuesta que distribuyen *independientes* condicionales en $\mathbf{X}$ desde un distribución normal con media ${\mu}_{i}$, para $i = 1, \dots, n$; y varianza constante ${\sigma}^{2}$; es decir, ${Y}_{i} | \mathbf{x}^{\intercal}_{i} \sim N\left( {\mu}_{i}, {\sigma}^{2} \right)$; $\forall i$. Además, suponga que $\mathbf{x}^{\intercal}_{i} = [ 1, {x}_{i2}, \dots, {x}_{ip} ]$ es un vector con $p$ variables explicativas para la observación $i$ y $\boldsymbol{\beta} = {\left( {\beta}_{1}, {\beta}_{2}, \dots, {\beta}_{p} \right)}^{\intercal}$, es el conjunto de $p$ parámetros desconocidos; donde el parámetro desconocido ${\beta}_{j}$ está asociado a la correspondiente variable explicativa ${x}_{\cdot j}$, para $j = 1, \dots, p$. Entonces, el LM clásico puede ser escrito como:
+\begin{eqnarray} \label{eq:41}
+\mathbb{E}\left( {Y}_{i} | \mathbf{x}^{\intercal}_{i} \right) \;=\; {\mu}_{i} & = & {\beta}_{1} + {\beta}_{2}{x}_{i2} + \dots + {\beta}_{p}{x}_{ip} \nonumber \\
+ & = & \displaystyle \sum_{j = 1}^{p} {\beta}_{j} {x}_{ij} \nonumber \\
+ & = & \displaystyle \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}
+\end{eqnarray}
+para, $i = 1, \dots, n$.
+
+La ecuación (\ref{eq:41}), para el conjunto de datos, se puede escribir en notación matricial, como:
+\begin{eqnarray} \label{eq:42}
+\mathbb{E}\left( \mathbf{Y} | \mathbf{X} \right) \;=\; \boldsymbol{\mu} & = & \mathbf{X} \boldsymbol{\beta}
+\end{eqnarray}
+Para estimar los parámetros desconocidos $\boldsymbol{\beta}$ de un LM, en general, se utiliza el *Método de Mínimos Cuadrados*^[Una descripción de este método puede encontrarse en [@DobsonBarnett2018, sec.1.6.3] y [@DunnGordon2018, sec.2.3.1].]. Este método proporciona el estimador más eficiente entre todos los estimadores insesgados, porque tiene varias propiedades estadísticas deseables y, en tal sentido, se lo denomina el "*Mejor Estimador Lineal Insesgado*" (BLUE). No obstante, como se ha mencionado, los LMs presentan una serie de limitaciones para el análisis. En particular, a continuación, se discuten sobre dos limitaciones que resultan relevantes para los fines de nuestro estudio.
+
+Una importante limitación del modelo lineal es que este tipo de modelos solo son adecuados cuando la variable respuesta $\mathbf{Y}$ (o alguna transformación de $\mathbf{Y}$) distribuye normal con varianza constante; situación que limita el análisis al caso en que la variable respuesta $\mathbf{Y}$, corresponda a datos continuos que provienen de una distribución normal con varianza constante. En tal sentido, los LMs no serían adecuados en el caso que la variable respuesta $\mathbf{Y}$ corresponda, por ejemplo, a datos binarios que provienen de una distribución Bernoulli o datos discretos que provienen de una distribución Binomial. Los LMs tienen incluso dificultades con datos continuos, pero cuyo soporte esta restringido a un subconjunto de los reales, como es el caso de datos que provienen de una distribución Beta. Otra importante limitación de los LMs, es asumir una relación lineal entre la media condicional de la variable respuesta $\mathbf{Y}$ y el predictor lineal $\mathbf{X} \boldsymbol{\beta}$; es decir, si la relación antes descrita no puede describirse de forma lineal, los LMs tampoco serían adecuados en tal situación.
+
+Los GLMs se llaman así porque generalizan los modelos lineales clásicos, incluidos los LMs, basados en la distribución normal. Esta generalización, básicamente, tiene dos aspectos:
+
+  i. Para la variable respuesta $\mathbf{Y}$, es posible considerar distribuciones distintas a la distribución normal; pudiendo considerar distribuciones para variables aleatorias binarias, categóricas, discretas, así como una amplia gama de distribuciones continuas, incluida la distribución normal. En particular, estos modelos pueden involucrar una variedad de distribuciones seleccionadas desde una familia de distribuciones especial: la *familia de dispersión exponencial*^[Esta restricción, en realidad, surge por razones puramente técnicas. La razón es que el algoritmo numérico comúnmente utilizado para la estimación de los GLMs, el algoritmo de *Mínimos Cuadrados Ponderados Iterados* (IWLS), solo funciona dentro de esta familia de distribuciones. Sin embargo, con los computadores modernos, esta limitación puede eliminarse fácilmente [@Lindsey1997, pg.9].].
+  
+  ii. La asociación entre la media de variable respuesta y el predictor lineal, no tiene que ser tomar la simple forma lineal descrita en (\ref{eq:41} y \ref{eq:42}). Estos modelos involucran transformaciones de la media $\boldsymbol{\mu}$, a través de lo que se denomina la *función de enlace*; la cual, como veremos, permite vincular los componentes sistemático y aleatorio del modelo de regresión, incluso de forma no lineal.
+
+Realizada esta breve descripción a cerca de los LMs, mencionando los supuestos de estos modelos, pero además realizando un breve comentario sobre dos importantes limitaciones que tienen estos; como se mencionó al inicio de este apartado, conviene introducir una importante familia de distribuciones para los GLMs, puesto que los miembros de tal familia de distribuciones poseen propiedades estadísticas deseables. Esta familia de distribuciones corresponde a la generalización de la *familia exponencial*: la *familia de dispersión exponencial*.
+
+### La Familia Exponencial y de Dispersión Exponencial \label{sec:3.3.2}
+
+Suponga que se tiene una secuencia de variables respuesta aleatorias *independientes* ${Z}_{i}$, $\forall i: i = 1, \dots, n$; cada una con función de probabilidad si $Z$ es discreta, o función de densidad si $Z$ es continua; $f\left( {z}_{i} \;|\; {\xi}_{i} \right)$ que puede ser escrita en la forma: 
+\begin{eqnarray} \label{eq:43}
+f\left( {z}_{i} | {\xi}_{i} \right) & = & r\left( {z}_{i} \right) s\left( {\xi}_{i} \right) \exp \left\{ t\left( {z}_{i} \right) u\left( {\xi}_{i} \right) \right\} \nonumber \\
+ & = & \exp \left\{ t\left( {z}_{i} \right) u\left( {\xi}_{i} \right) + v\left( {z}_{i} \right) + w\left( {\xi}_{i} \right) \right\}
+\end{eqnarray}
+donde, $r(), s(), t()$ y $u()$; son funciones conocidas, con $r\left( {z}_{i} \right) = \exp \left\{ v \left( {z}_{i} \right) \right\}$ y $s\left( {\xi}_{i} \right) = \exp \left\{w \left( {\xi}_{i} \right) \right\}$. Además, ${\xi}_{i}$ es un *parámetro de localización* que indica la posición donde se encuentra la distribución dentro del rango de posibles valores para la variable respuesta. Cualquier distribución que pueda escribirse en la forma que se describe en (\ref{eq:43}), se dice es miembro de la *familia exponencial*.
+
+La *forma canónica* de la variable aleatoria, la del parámetro y la de la distribución, se obtiene haciendo $y = t(z)$ y $\theta = u(\xi)$. Si estas son transformaciones uno a uno, estas se simplifican, pero no cambian fundamentalmente. Luego, el modelo ahora se convierte en:
+\begin{eqnarray} \label{eq:44}
+f\left( {y}_{i} | {\theta}_{i} \right) & = & \exp \left\{ {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right) + c\left( {y}_{i} \right) \right\}
+\end{eqnarray}
+donde, $b\left( {\theta}_{i} \right)$ es la constante de normalización de la distribución. Ahora, ${Y}_{i}$, $\forall i: i = 1, \dots, n$; es un conjunto de variables aleatorias *independientes* con medias, digamos ${\mu}_{i}$, de modo que podríamos, clásicamente, escribir ${y}_{i} = {\mu}_{i} + {\varepsilon}_{i}$.
+
+Como se verá más adelante, $b\left( \theta \right)$ es una función muy importante, puesto que de sus derivadas se obtienen las funciones para la media y la varianza.
+
+La familia exponencial puede generalizarse al incluir un *parámetro de escala* (constante), digamos $\phi$, en la distribución, tal que:
+\begin{eqnarray} \label{eq:45}
+f\left( {y}_{i} \;|\; {\theta}_{i}, \phi \right) & = & \text{exp} \left\{ \frac{ {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right) }{ {a}_{i} \left( \phi \right) } + c \left( {y}_{i}, \phi \right) \right\}
+\end{eqnarray}
+donde, ${\theta}_{i}$ sigue siendo la forma canónica del parámetro de localización, alguna función de la media, ${\mu}_{i}$. Entonces, se dice que $f\left( {y}_{i} \;|\; {\theta}_{i}, \phi \right)$ es miembro de la *familia de dispersión exponencial*. Por último, es claro que cualquier miembro de la familia exponencial es también miembro de la familia de dispersión exponencial, con ${a}_{i} \left( \phi \right) = 1$.
+
+### Estructura de los Modelos Lineales Generalizados \label{sec:3.3.3}
+
+[@Nelder1972, pg.372], caracterizan a través de tres componentes, lo que ellos denominan, "*un modelo que produce el modelo lineal generalizado*". En este sentido, los GLMs pueden describirse a partir de los siguientes tres componentes:
+
+  1. *Distribución de la variable respuesta* o *estructura del error*: $\mathbf{Y}$
+  
+  Se asume que la secuencia ${Y}_{1}, \dots, {Y}_{n}$; son v.a. *independientes* entre sí, que vienen de alguna distribución de la familia de dispersión exponencial. De este modo, las v.a. ${Y}_{i}$, $\forall i: i = 1, \dots, n$, si bien comparten la misma distribución de la familia de dispersión exponencial, con un parámetro de escala constante, cada observación tiene su propia media, ${\mu}_{i}$. Es decir, se asume que el conjunto de datos $\mathbf{Y}$ distribuyen, desde una misma distribución de la familia de dispersión exponencial, de manera *independiente*, pero no idénticamente. 
+
+  2. *Predictor Lineal*: $\mathbf{X} \boldsymbol{\beta}$
+  
+  Se asume que se cuenta con un conjunto de variables explicativas conocidas $\mathbf{X} = {[ \mathbf{x}^{\intercal}_{1}, \dots, \mathbf{x}^{\intercal}_{n} ]}^{\intercal}$, también denominada *matriz de diseño* y un conjunto de $p$ parámetros desconocidos $\boldsymbol{\beta} = {[ {\beta}_{1}, {\beta}_{2}, \dots, {\beta}_{p} ]}^{\intercal}$, tal que:
+  \begin{eqnarray} \label{eq:46}
+  \boldsymbol{\eta} & = & \mathbf{X} \boldsymbol{\beta}
+  \end{eqnarray}
+  donde $\mathbf{X} \boldsymbol{\beta}$ es el predictor lineal. Este describe cómo cambia la localización de la distribución de la respuesta con las variables explicativas $\mathbf{X}$.
+
+  3. *Función de Enlace*: ${g}_{i}({\mu}_{i})$
+  
+  Si se toma la forma canónica del parámetro de localización ${\theta}_{i}$ de la distribución definida en el primer componente, tal que: ${\theta}_{i} = {\eta}_{i}$, la estructura de nuestro *GLM* está completo. Sin embargo, una generalización adicional a transformaciones no canónicas de la media requiere un componente adicional si se quiere mantener la idea de una estructura lineal. La relación entre la media de la $i$-ésima observación y su predictor lineal vendrá dada por una *función de enlace*, ${g}_{i}\left( \cdot \right)$:
+  \begin{eqnarray} \label{eq:47}
+  {\eta}_{i} & = & {g}_{i}({\mu}_{i}) \nonumber \\
+   & = & \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}
+  \end{eqnarray}
+  La *función de enlace* ${g}_{i}\left( \cdot \right)$ debe ser monótona y diferenciable. Normalmente se utiliza la misma función de enlace para todas las observaciones. Entonces, la *función de enlace canónica* es aquella función que transforma la media $\mu$ en la forma canónica del parámetro de localización ${\theta}_{i}$, de la distribución de la familia de dispersión exponencial, definida en el primer componente.
+
+### Estimación e Inferencia \label{sec:3.3.4}
+
+Supongamos que el conjunto de datos corresponden a una muestra de v.a. *independientes* que viene dada por $\left( {y}_{i}, \mathbf{x}^{\intercal}_{i} \right)$, para $i = 1, \dots, n$; donde para cada elemento de la muestra ${y}_{i} | \mathbf{x}^{\intercal}_{i}$ se tiene una función de densidad que pertenece a la familia de dispersión exponencial, tal como se definió en (\ref{eq:45}):
+\begin{eqnarray}
+f\left( {y}_{i} \;|\; {\theta}_{i}, \phi \right) & = & \text{exp} \left\{ \frac{ {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right) }{ {a}_{i} \left( \phi \right) } + c \left( {y}_{i}, \phi \right) \right\} \nonumber
+\end{eqnarray}
+para $i = 1, \dots, n$. En la presentación, se tiene fija una distribución que pertenece a alguna familia de dispersión exponencial subyacente y un parámetro de dispersión común $\phi$, pero se permite que cada elemento de la muestra ${y}_{i} | \mathbf{x}^{\intercal}_{i}$, tenga su propio parámetro natural: ${\theta}_{i}$.
+
+Nuestro objetivo es estimar las medias ${\mu}_{i} = \mathbb{E}\left( {Y}_{i} | \mathbf{x}^{\intercal}_{i} \right)$, para $i = 1, \dots, n$. Recordemos, de la ecuación (\ref{eq:47}), que tenemos una función de enlace ${\eta}_{i} = {g}_{i}({\mu}_{i})$, que conecta la media ${\mu}_{i}$ con el parámetro ${\eta}_{i} = \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}$. Por lo tanto, primero se pueden estimar los coeficientes $\boldsymbol{\beta}$, digamos $\widehat{\boldsymbol{\beta}}$, y luego se pueden usar estas estimaciones de forma que:
+\begin{eqnarray} \label{eq:48}
+g\left( \widehat{{\mu}_{i}} \right) & = & \mathbf{x}^{\intercal}_{i} \widehat{\boldsymbol{\beta}}
+\end{eqnarray}
+o, equivalentemente:
+\begin{eqnarray} \label{eq:49}
+\widehat{{\mu}_{i}} & = & {g}^{-1}\left( \mathbf{x}^{\intercal}_{i} \widehat{\boldsymbol{\beta}} \right)
+\end{eqnarray}
+para $i = 1, \dots, n$.
+
+Para calcular $\widehat{\boldsymbol{\beta}}$ podemos utilizar el método de *Estimación por Máxima Verosimilitud*. La verosimilitud del conjunto de datos $\left( {y}_{i}, \mathbf{x}^{\intercal}_{i} \right)$, para $i = 1, \dots, n$; condicional en $\mathbf{x}^{\intercal}_{i}$, es:
+\begin{eqnarray} \label{eq:50}
+L\left( \boldsymbol{\theta} \right) & = & \displaystyle \prod_{i = 1}^{n} f \left( {y}_{i} \;|\; {\theta}_{i}, \phi \right) \nonumber \\
+ & = & \displaystyle \prod_{i = 1}^{n} \text{exp} \left\{ \frac{ {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right) }{ {a}_{i} \left( \phi \right) } + c \left( {y}_{i}, \phi \right) \right\}
+\end{eqnarray}
+función que se escribe como una función de $\boldsymbol{\theta} = {[ {\theta}_{1}, \dots, {\theta}_{n} ]}^{\intercal}$, para denotar la dependencia del parámetro natural. Luego, la función de log-verosimilitud, viene dada por:
+\begin{eqnarray} \label{eq:51}
+\ell \left( \boldsymbol{\theta} \right) & = & \log L\left( \boldsymbol{\theta} \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; {\theta}_{i}, \phi \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \frac{ {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right) }{ {a}_{i} \left( \phi \right) } + \sum_{i = 1}^{n} c \left( {y}_{i}, \phi \right)
+\end{eqnarray}
+De este modo, si se busca maximizar la función de log-verosimilitud (\ref{eq:51}), sobre todas las posibles elecciones de coeficientes $\boldsymbol{\beta} \in { {\rm I\!R} }^{p}$; que es verdaderamente una función de $\boldsymbol{\beta}$, porque cada parámetro natural ${\theta}_{i}$ puede escribirse en términos de la media ${\mu}_{i}$ de la distribución que pertenece a alguna familia de dispersión exponencial, y ${\mu}_{i} = \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}$, para $i = 1, \dots, n$. Por tanto podemos escribir:
+\begin{eqnarray} \label{eq:52}
+\ell \left( \boldsymbol{\beta} \right) & = & \displaystyle \sum_{i = 1}^{n} {y}_{i} {\theta}_{i} - b\left( {\theta}_{i} \right)
+\end{eqnarray}
+donde se han descartado términos que no dependen de ${\theta}_{i}$, para $i = 1, \dots, n$.
+
+Para ser más concretos, supongamos que consideramos una función de enlace canónica $g$, recordando que esta es la función de enlace que establece ${\theta}_{i} = {\eta}_{i} = \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta}$, para $i = 1, \dots, n$. Entonces, la función de log-verosimilitud a maximizar sobre $\boldsymbol{\beta}$, es:
+\begin{eqnarray} \label{eq:53}
+\ell \left( \boldsymbol{\beta} \right) & = & \displaystyle \sum_{i = 1}^{n} {y}_{i} \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta} - b\left( \mathbf{x}^{\intercal}_{i} \boldsymbol{\beta} \right)
+\end{eqnarray}
+Excepto por el caso de mínimos cuadrados gaussianos; en general, no existe una forma cerrada para la solución de la maximización de $\ell \left( \boldsymbol{\beta} \right)$. Por tanto, se debe recurrir a algoritmos de optimización para calcular su maximizador; es decir, se deben aplicar métodos numéricos.
+
+Aun cuando, en el caso que la función de densidad involucrada pertenezca a la familia de dispersión exponencial, es posible maximizar $\ell \left( \boldsymbol{\beta} \right)$, a través de realizar repetidamente regresiones de mínimos cuadrados ponderados; es decir, aplicar el método de *Mínimos Cuadrados Ponderados Iterados* (IWLS). Si bien el método es computacionalmente conveniente (y eficiente), el algoritmo no puede aplicarse a situaciones más generales donde, en particular, la función de densidad involucrada no pertenece a la familia de dispersión exponencial. No obstante, el *Método de Newton*, entre otros, son una alternativa al problema general. 
+
+## Métodos Numéricos \label{sec:3.4}
+
+Muchos modelos estadísticos realistas inducen funciones de verosimilitud y de log-verosimilitud que, distinto a los ejemplos anteriores, no pueden optimizarse analíticamente. Esto ocurre cuando, por ejemplo, ${\ell}^{\prime} \left( \theta \right) = 0$ es una ecuación no lineal y, por tanto, la solución no puede ser determinada analíticamente. Similar situación acontece cuando, $\nabla \ell \left( \boldsymbol{\theta} \right) = \mathbf{0}$ es un sistema de ecuaciones no lineales. En ambas situaciones, un método extremadamente eficiente para encontrar raíces es el método de Newton^[Este método es también conocido en aplicaciones univariadas como el método de iteración de Newton-Raphson.].
+
+### El Método de Newton \label{sec:3.4.1}
+
+Supongamos que se busca la raíz de $g$, función de valor real no lineal en $x$; es decir, se busca el valor de $x$ tal que $g\left( x \right) = 0$. Supongamos que la raíz buscada es $x = {x}^{\ast}$; entonces, $g\left( {x}^{\ast} \right) = 0$. Supongamos, además, que $g$ es continuamente diferenciable y que ${g}^{\prime}\left( x \right) \neq 0$. Si $g\left( x \right)$ es diferenciable en el punto $x = {x}^{(t)}$, mediante la expansión lineal de primer orden de la serie de Taylor, la función $g\left( x \right)$ tiene una aproximación lineal, alrededor del punto $x = {x}^{(t)}$, la cual viene dada por:
+\begin{eqnarray} \label{eq:54}
+g \left( x \right) & \approx & g \left( {x}^{(t)} \right) + {g}^{\prime} \left( {x}^{(t)} \right) \left( x - {x}^{(t)} \right)
+\end{eqnarray}
+Si bien no es posible encontrar una solución analítica para la ecuación $g\left( x \right) = 0$, esto debido a la no linealidad de $g$ en $x$; $g\left( {x}^{\ast} \right)$ puede ser aproximada por la aproximación lineal de $g\left( x \right)$; es decir:
+\begin{eqnarray} \label{eq:55}
+g \left( {x}^{(t)} \right) + {g}^{\prime} \left( {x}^{(t)} \right) \left( {x}^{\ast} - {x}^{(t)} \right) & = & 0
+\end{eqnarray}
+Dado que $g\left( {x}^{\ast} \right)$ está siendo aproximada por su recta tangente alrededor del punto $x = {x}^{(t)}$, parece razonable aproximar la raíz de $g\left( x \right)$; esto es ${x}^{\ast}$, por la raíz de la recta tangente. Por lo tanto, resolviendo para ${x}^{\ast}$, se tiene:
+\begin{eqnarray} \label{eq:56}
+{x}^{\ast} & = & {x}^{(t)} - { \left\{ {g}^{\prime} \left( {x}^{(t)} \right) \right\} }^{-1} g \left( {x}^{(t)} \right)
+\end{eqnarray}
+De este modo, iterando esta estrategia, se obtiene la ecuación de actualización del método de Newton:
+\begin{eqnarray} \label{eq:57}
+{x}^{(t+1)} & = & {x}^{(t)} - { \left\{ {g}^{\prime} \left( {x}^{(t)} \right) \right\} }^{-1} g \left( {x}^{(t)} \right)
+\end{eqnarray}
+Cuando el problema de optimización corresponde a un problema de MLE donde se busca una solución a la ecuación no lineal ${\ell}^{\prime} \left( \theta \right) = 0$, la ecuación de actualización para el método de Newton es:
+\begin{eqnarray} \label{eq:58}
+{\theta}^{(t+1)} & = & {\theta}^{(t)} - { \left\{ {\ell}^{\prime \prime}\left( {\theta}^{(t)} \right) \right\} }^{-1} {\ell}^{\prime} \left( {\theta}^{(t)} \right)
+\end{eqnarray}
+En tanto, cuando el problema de optimización corresponde a un problema de MLE donde se busca una solución al sistema de ecuaciones no lineales $\nabla \ell \left( \boldsymbol{\theta} \right) = \mathbf{0}$, a partir de la aproximación multivariada de la serie de Taylor para $\nabla \ell \left( \boldsymbol{\theta} \right)$, el algoritmo de actualización para el método de Newton es:
+\begin{eqnarray} \label{eq:59}
+{\boldsymbol{\theta}}^{(t+1)} & = & {\boldsymbol{\theta}}^{(t)} - { \left\{ \mathbf{H}\left( \ell \left( {\boldsymbol{\theta}}^{(t)} \right) \right) \right\} }^{-1} \nabla \ell \left( {\boldsymbol{\theta}}^{(t)} \right)
+\end{eqnarray}
+donde, ${ \left\{ \mathbf{H}\left( \ell \left( {\boldsymbol{\theta}}^{(t)} \right) \right) \right\} }^{-1}$ es la inversa de la matriz Hessiana $\mathbf{H}$.
+
+De manera similar, es posible aplicar el método de Newton, cuando el problema de optimización corresponde a un problema de MLE donde se busca optimizar $\ell \left( \boldsymbol{\beta} \right)$.
+
+#### Distribución Gamma \label{sec:3.4.1.1}
+\
+
+Sea ${Y}_{1} , \dots , {Y}_{n}$; una secuencia de v.a. *i.i.d.* de una distribución Gamma con función de densidad que viene dada por:
+\begin{eqnarray} \label{eq:60}
+f\left( y \;|\; \alpha , \sigma \right) & = & \frac{1}{ {\sigma}^{\alpha} \Gamma \left( \alpha\right) } {y}^{\alpha - 1} \exp \left( -\frac{y}{\sigma} \right)
+\end{eqnarray}
+para $y > 0$; donde $\alpha > 0$ es el parámetro de forma y $\sigma > 0$ es el parámetro de escala.
+
+Se puede mostrar que la función de log-verosimilitud $\ell \left( \alpha , \sigma \right)$, viene dada por:
+\begin{eqnarray} \label{eq:61}
+\ell \left( \alpha , \sigma \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; \alpha , \sigma \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log \left\{ \frac{1}{ {\sigma}^{\alpha} \Gamma \left( \alpha\right) } {{y}_{i}}^{\alpha - 1} \exp \left( -\frac{{y}_{i}}{\sigma} \right) \right\} \nonumber \\
+ & = & \displaystyle - n \log \Gamma \left( \alpha\right) - n \alpha \log \sigma + \left(\alpha - 1\right) \sum_{i = 1}^{n} \log {y}_{i} - \frac{1}{\sigma} \sum_{i = 1}^{n} {y}_{i}
+\end{eqnarray}
+Si se asume que se conoce el valor del parámetro de escala $\sigma$, el estimador de máxima verosimilitud para $\alpha$, se obtiene de resolver, para $\alpha$, la siguiente ecuación:
+\begin{eqnarray} \label{eq:62}
+\frac{d \ell \left( \alpha \right) }{d \alpha } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la ecuación (\ref{eq:49}) corresponde a:
+\begin{eqnarray} \label{eq:63}
+- n \left( \psi \left( \alpha \right) + \log \sigma \right) + \sum_{i = 1}^{n} \log {y}_{i} & = & 0
+\end{eqnarray}
+donde, $\displaystyle \psi \left( \alpha \right) = \frac{d \log \Gamma \left( \alpha\right)}{d \alpha}$ es la función digamma. La ecuación (\ref{eq:50}) es no lineal en $\alpha$; por tanto, no es posible obtener una solución analítica. No obstante, el método de Newton-Rapshon descrito en (\ref{eq:45}), puede aplicarse a este caso y, de este modo, obtener una solución numérica para ${\widehat{\alpha}}_{MLE}$.
+
+Puede remitirse al [Anexo 1.2. Distribución Gamma][], donde se presenta una aplicación para este caso.
+
+#### Distribución Weibull \label{sec:3.4.1.2}
+\
+
+La función de log-verosimilitud de una muestra aleatoria que proviene de una distribución Weibull $\ell \left( a , \sigma \right)$, quedó descrita en (\ref{eq:25}) tal como sigue:
+\begin{eqnarray}
+\ell \left( a , \sigma \right) & = & \displaystyle n \log a - n a \log \sigma + \left(a - 1\right) \sum_{i = 1}^{n} \log {y}_{i} - \sum_{i = 1}^{n} {\left( \frac{{y}_{i}}{\sigma} \right)}^{a} \nonumber
+\end{eqnarray}
+Si se asume que no se conocen los valores de ambos parámetros, $a$ y $\sigma$; el estimador de máxima verosimilitud para $a$ y $\sigma$, se obtienen de resolver, para $a$ y $\sigma$, el siguiente sistema de ecuaciones:
+\begin{eqnarray} \label{eq:64}
+\nabla \ell \left( a, \sigma \right) & = & {\left( \frac{\partial \ell \left( a, \sigma \right) }{\partial a } \;,\; \frac{\partial \ell \left( a, \sigma \right) }{\partial \sigma } \right)}^{\intercal} \;=\; \mathbf{0}
+\end{eqnarray}
+No es difícil mostrar que el sistema de ecuaciones (\ref{eq:51}) corresponde a:
+\begin{eqnarray}
+\frac{n}{a} - n \log \sigma + \sum_{i = 1}^{n} \log {y}_{i} - \frac{1}{{\sigma}^{a}} \sum_{i = 1}^{n} {{y}_{i}}^{a} \log \frac{{y}_{i}}{\sigma} & = & 0 \label{eq:65} \\
+- \frac{n a}{\sigma} + \frac{a}{{\sigma}^{a + 1}} \sum_{i = 1}^{n} {{y}_{i}}^{a} & = & 0 \label{eq:66}
+\end{eqnarray}
+El sistema de ecuaciones (\ref{eq:65} y \ref{eq:64}) es no lineal en $a$ y $\sigma$; por tanto, no es posible obtener una solución analítica. No obstante, el método de Newton descrito en (\ref{eq:46}), puede aplicarse a este caso y, de este modo, obtener una solución numérica para ${\widehat{a}}_{MLE}$ y ${\widehat{\sigma}}_{MLE}$.
+
+Puede remitirse al [Anexo 1.3. Distribución Weibull][], donde se presenta una aplicación para este caso.
+
+## Estimación con Datos Incompletos \label{sec:3.5}
+
+Supongamos que $\mathbf{Y}$ denota el conjunto de datos completos, donde $\mathbf{Y} = \left(\mathbf{Y}_{obs}, \mathbf{Y}_{mis}\right)$ y, por su parte, $\boldsymbol{\theta}$ denota el conjunto de parámetros de interés; de foma que $P\left(\mathbf{Y} \;|\; \boldsymbol{\theta} \right)$, denota la función de densidad conjunta de los datos completos. Por otro lado, $\mathbf{R}$ denota la matriz de respuesta y $\boldsymbol{\psi}$ denota es el conjunto de parámetros del modelo estadístico para $\mathbf{R}$; es decir, $P\left(\mathbf{R} \;|\; \mathbf{Y}, \boldsymbol{\psi} \right)$, denota el mecanismo de falta de respuesta.
+
+Dado que la información observada en los datos incluye los datos observados y la matriz de respuesta; esto es $\mathbf{Y}_{obs}$ y $\mathbf{R}$; respectivamente, la función de verosimilitud de los datos observados se puede expresar como:
+\begin{eqnarray} \label{eq:67}
+L\left(\boldsymbol{\theta}, \boldsymbol{\psi} \right) & \propto & P\left(\mathbf{Y}_{obs}, \mathbf{R} \;|\; \boldsymbol{\theta}, \boldsymbol{\psi} \right)
+\end{eqnarray}
+Luego, por definición de función de densidad marginal y probabilidad conjunta, se puede escribir:
+\begin{eqnarray} \label{eq:68}
+L\left(\boldsymbol{\theta}, \boldsymbol{\psi} \right) & \propto & P\left( \mathbf{Y}_{obs}, \mathbf{R} \;|\; \boldsymbol{\theta}, \boldsymbol{\psi} \right) \nonumber \\
+ & = & \int P\left( \mathbf{Y}, \mathbf{R} \;|\; \boldsymbol{\theta}, \boldsymbol{\psi} \right) d \mathbf{Y}_{mis} \nonumber \\
+ & = & \int P\left( \mathbf{Y} \;|\; \boldsymbol{\theta} \right) f\left( \mathbf{R} \;|\; \mathbf{R}, \boldsymbol{\psi} \right) d \mathbf{Y}_{miss} \nonumber \\
+ & = & \int P\left( \mathbf{Y}_{obs}, \mathbf{Y}_{miss} \;|\; \boldsymbol{\theta} \right) f\left( \mathbf{R} \;|\; \mathbf{Y}_{obs}, \mathbf{Y}_{miss}, \boldsymbol{\psi} \right) d \mathbf{Y}_{miss}
+\end{eqnarray}
+Si es posible asumir que el *mecanismo es ignorable*, se tiene que.
+\begin{eqnarray} \label{eq:69}
+L\left( \boldsymbol{\theta}, \boldsymbol{\psi} \right) & = & \int P\left( \mathbf{Y}_{obs}, \mathbf{Y}_{mis} | \boldsymbol{\theta} \right) f\left( \mathbf{R} \;|\; \mathbf{Y}_{obs}, \boldsymbol{\psi} \right) d \mathbf{Y}_{mis} \nonumber \\
+ & = & P\left( \mathbf{R} \;|\; \mathbf{Y}_{obs}, \boldsymbol{\psi} \right) \int f\left( \mathbf{Y}_{obs}, \mathbf{Y}_{mis} | \boldsymbol{\theta} \right) d \mathbf{Y}_{mis} \nonumber \\
+ & = & P\left( \mathbf{R} | \mathbf{Y}_{obs}, \boldsymbol{\psi} \right) f\left( \mathbf{Y}_{obs} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+La ecuación (\ref{eq:69}) muestra que, cuando el *mecanismo es ignorable*, para realizar inferencias sobre $\boldsymbol{\theta}$, solo es necesario trabajar con $P\left( \mathbf{Y}_{obs} \;|\; \boldsymbol{\theta} \right)$ en lugar de $P\left( \mathbf{Y}_{obs}, \mathbf{R} \;|\; \boldsymbol{\theta}, \boldsymbol{\psi} \right)$. Es decir, es suficiente trabajar con la función de verosimilitud de los datos observados, ignorando el mecanismo de datos faltantes y, con esto, la falta de datos en si misma. De este modo, se tiene que:
+\begin{eqnarray} \label{eq:70}
+L\left(\boldsymbol{\theta}, \boldsymbol{\psi} \right) & \propto & P\left( \mathbf{Y}_{obs} \;|\; \boldsymbol{\theta} \right)
+\end{eqnarray}
+
+### Distribución Exponencial \label{sec:3.5.1}
+
+Sea ${Y}_{1} , \dots , {Y}_{n}$; una secuencia de v.a. *i.i.d.* de una distribución exponencial con función de densidad que viene dada por:
+\begin{eqnarray} \label{eq:71}
+f\left( y \;|\; \lambda \right) & = & \lambda \exp \left( -\lambda y \right)
+\end{eqnarray}
+para $y > 0$; donde $\lambda > 0$ es el parámetro de la distribución.
+
+La función de log-verosimilitud $\ell \left( \lambda \right)$ de los datos completos, viene dada por:
+\begin{eqnarray} \label{eq:72}
+\ell \left( \lambda \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; \lambda \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log \left\{ \lambda \exp \left( -\lambda {y}_{i} \right) \right\} \nonumber \\
+ & = & \displaystyle n \log \lambda - \lambda \sum_{i = 1}^{n} {y}_{i}
+\end{eqnarray}
+Si una parte de los datos es observada (${Y}_{obs}$) y otra es no observada (${Y}_{mis}$); y, además, el *mecanismo es ignorable*, la función de log-verosimilitud $\ell \left( \lambda \right)$ de los datos observados, viene dada por:
+\begin{eqnarray} \label{eq:73}
+\ell \left( \lambda \right) & = & \displaystyle \sum_{obs}^{} \log f \left( {y}_{i} \;|\; \lambda \right) \nonumber \\
+ & = & \displaystyle \sum_{obs}^{} \log \left\{ \lambda \exp \left( -\lambda {y}_{i} \right) \right\} \nonumber \\
+ & = & \displaystyle {n}_{obs} \log \lambda - \lambda \sum_{obs}^{} {y}_{i}
+\end{eqnarray}
+El estimador de máxima verosimilitud para $\lambda$, se obtiene de resolver, para $\lambda$, la siguiente ecuación:
+\begin{eqnarray} \label{eq:74}
+\frac{d \ell \left( \lambda \right) }{d \lambda } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la solución de la ecuación (\ref{eq:74}), corresponde a:
+\begin{eqnarray} \label{eq:75}
+\widehat{\lambda} & = & \frac{1}{\bar{y}_{obs}}
+\end{eqnarray}
+donde, $\displaystyle \bar{y}_{obs} = \frac{1}{n_{obs}} \sum_{obs}^{} {y}_{i}$.
+
+Puede remitirse al [Anexo 2.1. Distribución Exponencial][], donde se presenta una aplicación para este caso.
+
+### Distribución Binomial \label{sec:3.5.2}
+
+Sea ${Y}_{1} , \dots , {Y}_{n}$; una secuencia de v.a. *i.i.d.* de una distribución binomial con función de probabilidad que viene dada por:
+\begin{eqnarray} \label{eq:76}
+f\left( y \;|\; k, \pi \right) & = & {k \choose y} {\pi}^{y} {\left( 1 - \pi \right)}^{k - y}
+\end{eqnarray}
+para $y \in {\rm I\!N}$; donde $0 \le \pi \le 1$ es la probabilidad de éxito y $k \in {\rm I\!N}-\{ 0 \}$ es el número de ensayos Bernoulli.
+
+La función de log-verosimilitud $\ell \left( k, \pi \right)$ de los datos completos, viene dada por:
+\begin{eqnarray} \label{eq:77}
+\ell \left( k, \pi \right) & = & \displaystyle \sum_{i = 1}^{n} \log f \left( {y}_{i} \;|\; k, \pi \right) \nonumber \\
+ & = & \displaystyle \sum_{i = 1}^{n} \log \left\{ {k \choose {y}_{i}} {\pi}^{{y}_{i}} {\left( 1 - \pi \right)}^{k - {y}_{i}} \right\} \nonumber \\
+ & = & \displaystyle \log \pi \sum_{i = 1}^{n} {y}_{i} + n k \log \left( 1 - \pi \right) - \log \left( 1 - \pi \right) \sum_{i = 1}^{n} {y}_{i}
+\end{eqnarray}
+Si una parte de los datos es observada (${Y}_{obs}$) y otra es no observada (${Y}_{mis}$); y, además, el *mecanismo es ignorable*, la función de log-verosimilitud $\ell \left( k, \pi \right)$ de los datos observados, viene dada por:
+\begin{eqnarray} \label{eq:78}
+\ell \left( \pi \right) & = & \displaystyle \sum_{obs}^{} \log f \left( {y}_{i} \;|\; k, \pi \right) \nonumber \\
+ & = & \displaystyle \sum_{obs}^{} \log \left\{ {k \choose {y}_{i}} {\pi}^{{y}_{i}} {\left( 1 - \pi \right)}^{k - {y}_{i}} \right\} \nonumber \\
+ & = & \displaystyle \log \pi \sum_{obs}^{} {y}_{i} + n k \log \left( 1 - \pi \right) - \log \left( 1 - \pi \right) \sum_{obs}^{} {y}_{i}
+\end{eqnarray}
+Si se asume que se conoce el valor del parámetro $k$; de las ecuaciones (\ref{eq:32} y \ref{eq:78}), se tiene que el estimador para $\pi$, se obtiene de resolver, para $\pi$, la siguiente ecuación:
+\begin{eqnarray} \label{eq:79}
+\frac{d \ell \left( \pi \right) }{d \pi } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la solución de la ecuación (\ref{eq:79}), corresponde a:
+\begin{eqnarray} \label{eq:80}
+\widehat{\pi} & = & \frac{\bar{y}_{obs}}{k}
+\end{eqnarray}
+donde, $\displaystyle \bar{y}_{obs} = \frac{1}{n_{obs}} \sum_{obs}^{} {y}_{i}$.
+
+Puede remitirse al [Anexo 2.2. Distribución Binomial][], donde se presenta una aplicación para este caso.
+
+## Algoritmo de Esperanza-Maximización \label{sec:3.6}
+
+El *Algoritmo de Esperanza-Maximización*^[Para un detalle completo del *Algoritmo de Esperanza-Maximización* (EM), se puede revisar [@Dempster1977EM].] (EM), presenta una técnica iterativa general para realizar Estimación por Máxima Verosimilitud (MLE) de parámetros, en problemas que pueden presentarse como uno de datos *incompletos*. El algoritmo EM puede utilizarse incluso con datos completos pero su mayor utilidad ocurre cuando la función a optimizar es difícil de abordar, en general, debido a la incompletitud de los datos. En términos muy simples, el algoritmo busca iterativamente maximizar la función de verosimilitud $L\left(\boldsymbol{\theta} \right)$ con respecto a $\boldsymbol{\theta}$.
+
+Denotemos ${\boldsymbol{\theta}}^{(t)}$ el estimador maximizado en la iteración $t$, para $t = 0, 1, \dots$ . Se define la función $Q\left(\boldsymbol{\theta} \;|\; {\boldsymbol{\theta}}^{(t)} \right)$ como la *esperanza* de la función de log-verosimilitud conjunta de los datos completos $\mathbf{Y}$; condicional en los datos observados $\mathbf{Y}_{obs} = \mathbf{y}_{obs}$. Es decir:
+\begin{eqnarray} \label{eq:81}
+Q\left(\boldsymbol{\theta} \;|\; {\boldsymbol{\theta}}^{(t)}\right) & = & \displaystyle \mathbb{E}\left( \log L\left(\boldsymbol{\theta} \right) \;|\; \mathbf{y}_{obs}, {\boldsymbol{\theta}}^{(t)} \right) \nonumber \\
+ & = & \displaystyle \mathbb{E}\left( \log {f}_{Y} \left( \mathbf{y} \;|\; \boldsymbol{\theta}\right) | \mathbf{y}_{obs}, {\boldsymbol{\theta}}^{(t)} \right) \nonumber \\
+ & = & \displaystyle \int \log {f}_{Y}\left( \mathbf{y} \;|\; \boldsymbol{\theta} \right) {f}_{Y_{mis} \;|\; Y_{obs}}\left( \mathbf{y}_{mis} \;|\; \mathbf{y}_{obs}, {\boldsymbol{\theta}}^{(t)} \right) d \mathbf{Y}_{mis}
+\end{eqnarray}
+El algoritmo EM es inicializado para ${\boldsymbol{\theta}}^{(0)}$, luego se alterna entre dos pasos: E de *Esperanza* y M de *Maximización*. El algoritmo EM se resume como sigue:
+
+  1. **Paso E:** Se calcula $Q\left(\boldsymbol{\theta} \;|\; {\boldsymbol{\theta}}^{(t)}\right)$.
+  
+  2. **Paso M:** Se maximiza $Q\left(\boldsymbol{\theta} \;|\; {\boldsymbol{\theta}}^{(t)}\right)$ con respecto a $\boldsymbol{\theta}$. Se establece ${\boldsymbol{\theta}}^{(t+1)}$ igual al estimador que maximiza $Q$.
+  
+  3. Se regresa al paso E, a menos que algún criterio de parada haya sido alcanzado^[En el presente caso, los criterios de parada se construyen en base a: ${\left( {\boldsymbol{\theta}}^{(t+1)} - {\boldsymbol{\theta}}^{(t)} \right)}^{\intercal} \left( {\boldsymbol{\theta}}^{(t+1)} - {\boldsymbol{\theta}}^{(t)} \right)$ o $| Q\left( {\boldsymbol{\theta}}^{(t+1)} \;|\; {\boldsymbol{\theta}}^{(t)} \right) - Q\left( {\boldsymbol{\theta}}^{(t)} \;|\; {\boldsymbol{\theta}}^{(t)} \right) |$.].
+
+### Distribución Exponencial \label{sec:3.6.1}
+
+Considerando la función de log-verosimilitud de los datos completos dada en la ecuación (\ref{eq:72}):
+\begin{eqnarray}
+\ell \left( \lambda \right) & = & \displaystyle n \log \lambda - \lambda \sum_{i = 1}^{n} {y}_{i} \nonumber
+\end{eqnarray}
+La función $Q\left( \lambda \;|\; {\lambda}^{(t)} \right)$ viene dada por:
+\begin{eqnarray} \label{eq:82}
+Q\left( \lambda \;|\; {\lambda}^{(t)} \right) & = & \displaystyle \mathbb{E}\left( \ell \left( \lambda \right) \;|\; \mathbf{y}_{obs}, {\lambda}^{(t)} \right) \nonumber \\
+ & = & \displaystyle \mathbb{E}\left( \displaystyle n \log \lambda - \lambda \sum_{i = 1}^{n} {y}_{i} \;|\; \mathbf{y}_{obs}, {\lambda}^{(t)} \right) \nonumber \\
+ & = & \displaystyle n \log \lambda - \lambda \sum_{obs}^{} {y}_{i} - {n}_{mis} \frac{\lambda}{ {\lambda}^{(t)} }
+\end{eqnarray}
+Ahora se debe maximizar la función $Q\left( \lambda \;|\; {\lambda}^{(t)} \right)$, descrita en la ecuación (\ref{eq:82}). Es decir, se debe resolver:
+\begin{eqnarray} \label{eq:83}
+\displaystyle \frac{d Q\left( \lambda \;|\; {\lambda}^{(t)} \right) }{d \lambda } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la solución de la ecuación (\ref{eq:83}), corresponde a:
+\begin{eqnarray} \label{eq:84}
+{\lambda}^{\ast} & = & \frac{ n {\lambda}^{(t)} }{\displaystyle {\lambda}^{(t)} \sum_{obs}^{} {y}_{i} + {n}_{mis} }
+\end{eqnarray}
+Luego, se tiene que:
+\begin{eqnarray} \label{eq:85}
+{\lambda}^{(t+1)} & = & \frac{ n {\lambda}^{(t)} }{\displaystyle {\lambda}^{(t)} \sum_{obs}^{} {y}_{i} + {n}_{mis} }
+\end{eqnarray}
+
+Puede remitirse al [Anexo 2.3. Distribución Exponencial][], donde se presenta una aplicación para este caso.
+
+### Distribución Binomial \label{sec:3.6.2}
+
+Considerando la función de log-verosimilitud de los datos completos dada en la ecuación (\ref{eq:78}):
+\begin{eqnarray}
+\ell \left( \pi \right) & = & \displaystyle \log \pi \sum_{i = 1}^{n} {y}_{i} + n k \log \left( 1 - \pi \right) - \log \left( 1 - \pi \right) \sum_{i = 1}^{n} {y}_{i} \nonumber
+\end{eqnarray}
+La función $Q\left( \pi \;|\; {\pi}^{(t)} \right)$ viene dada por:
+\begin{eqnarray} \label{eq:86}
+Q\left( \pi \;|\; {\pi}^{(t)} \right) & = & \displaystyle \mathbb{E}\left( \ell \left( \pi \right) \;|\; \mathbf{y}_{obs}, {\pi}^{(t)} \right) \nonumber \\
+ & = & \displaystyle \mathbb{E}\left( \log \pi \sum_{i = 1}^{n} {y}_{i} + n k \log \left( 1 - \pi \right) - \log \left( 1 - \pi \right) \sum_{i = 1}^{n} {y}_{i} \;|\; \mathbf{y}_{obs}, {\pi}^{(t)} \right) \nonumber \\
+ & = & \displaystyle \log \left( \frac{\pi}{1 - \pi} \right) \sum_{obs}^{} {y}_{i} + \log \left( \frac{\pi}{1 - \pi} \right) {n}_{mis} k {\pi}^{(t)} + n k \log \left( 1 - \pi \right) 
+\end{eqnarray}
+Ahora se debe maximizar la función $Q\left( \pi \;|\; {\pi}^{(t)} \right)$, descrita en la ecuación (\ref{eq:86}). Es decir, se debe resolver:
+\begin{eqnarray} \label{eq:87}
+\displaystyle \frac{d Q\left( \pi \;|\; {\pi}^{(t)} \right) }{d \pi } & = & 0
+\end{eqnarray}
+No es difícil mostrar que la solución de la ecuación (\ref{eq:87}), corresponde a:
+\begin{eqnarray} \label{eq:88}
+{\pi}^{\ast} & = & \frac{\displaystyle \sum_{obs}^{} {y}_{i} + {n}_{mis} k {\pi}^{(t)} }{ n k }
+\end{eqnarray}
+Luego, se tiene que:
+\begin{eqnarray} \label{eq:89}
+{\pi}^{(t+1)} & = & \frac{\displaystyle \sum_{obs}^{} {y}_{i} + {n}_{mis} k {\pi}^{(t)} }{ n k }
+\end{eqnarray}
+
+Puede remitirse al [Anexo 2.4. Distribución Binomial][], donde se presenta una aplicación para este caso.
+\newpage
+
+# Aplicación de Métodos basados en la Función de Verosimilitud \label{sec:4}
+
+## Datos Categóricos \label{sec:4.1}
+
+Modelo GLM datos categóricos.
+
+Puede remitirse al [Anexo 3.1. GLM - Datos Categóricos][], donde se presenta una aplicación para este caso.
+
+
+## Datos Discretos \label{sec:4.2}
+
+Modelo GLM datos discretos.
+
+Puede remitirse al [Anexo 3.2. GLM - Datos Discretos][], donde se presenta una aplicación para este caso.
+
+## Datos Continuos \label{sec:4.3}
+
+Modelo GLM datos continuos.
+
+Puede remitirse al [Anexo 3.3. GLM - Datos Continuos][], donde se presenta una aplicación para este caso.
+
+## Mezclas de Distribuciones \label{sec:4.4}
+
+Modelo mezclas de distribuciones (posiblemente).
+
+\newpage
+
+# \textcolor{Red}{Estimación Bayesiana con Datos Incompletos} \label{sec:5}
+\
+
+## \textcolor{Red}{Estimación Bayesiana: Conceptos básicos} \label{sec:5.1}
+\
+
+## \textcolor{Red}{Métodos Bayesianos con Datos Incompletos: Marco teórico general} \label{sec:5.2}
+\
+
+\newpage
+# Anexos {-}
+```{r , eval = TRUE, echo = FALSE, message = FALSE, warning = FALSE}
+library(distr)
+library(distrEx)
+library(RColorBrewer)
+mycols <- rev(brewer.pal(n = 9, name = 'YlGnBu'))
+options(digits = 4)
+```
+
+## Anexo 1. Datos Completos {-}
+
+En los siguientes anexos ....
+
+### Anexo 1.1. Distribución Weibull {-}
+
+En el Anexo.
+
+\newpage
+
+### Anexo 1.2. Distribución Gamma {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 1.3. Distribución Weibull {-}
+
+En este anexo.
+
+\newpage
+
+## Anexo 2. Datos Incompletos {-}
+
+En los siguientes anexos ....
+
+\newpage
+
+### Anexo 2.1. Distribución Exponencial {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 2.2. Distribución Binomial {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 2.3. Distribución Exponencial {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 2.4. Distribución Binomial {-}
+
+En este anexo.
+
+\newpage
+
+## Anexo 3. Datos Incompletos {-}
+
+En los siguientes anexos ....
+
+\newpage
+
+### Anexo 3.1. GLM - Datos Categóricos {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 3.2. GLM - Datos Discretos {-}
+
+En este anexo.
+
+\newpage
+
+### Anexo 3.3. GLM - Datos Continuos {-}
+
+En este anexo.
+
+\newpage
+
+# Bibliografía {-}
+\setlength{\parindent}{0.5in}
+\setlength{\leftskip}{0.2in}
+\setlength{\parskip}{0.2in}
+\noindent
+<div id="refs"></div>
+```{r refmgr references, results="asis", echo=FALSE}
+# Print
+```
+\setlength{\parindent}{0pt}
+\setlength{\leftskip}{2in}
+\setlength{\parskip}{0in}
